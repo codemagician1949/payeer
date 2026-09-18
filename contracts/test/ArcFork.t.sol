@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {Test, console} from "forge-std/Test.sol";
 import {Vm} from "forge-std/Vm.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -29,8 +30,8 @@ contract ArcForkTest is Test {
         vm.etch(NATIVE_TRANSFER, address(new NativeTransferStub()).code);
         vm.allowCheatcodes(NATIVE_TRANSFER);
 
-        payeer = new Payeer(USDC);
-        pacts = new Pacts(USDC, resolver, address(this));
+        payeer = Payeer(address(new ERC1967Proxy(address(new Payeer()), abi.encodeCall(Payeer.initialize, (USDC, address(this))))));
+        pacts = Pacts(address(new ERC1967Proxy(address(new Pacts()), abi.encodeCall(Pacts.initialize, (USDC, resolver, address(this))))));
         // On Arc the gas balance and the USDC balance are the same funds:
         // 18-decimal native, exposed as 6-decimal ERC-20.
         for (uint256 i; i < 3; ++i) {

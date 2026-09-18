@@ -3,12 +3,17 @@ pragma solidity ^0.8.28;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 
 /// @title Payeer
 /// @notice Payment requests (links / invoices), memo'd sends and batch payouts in USDC on Arc.
 /// @dev Uses the USDC ERC-20 interface (6 decimals). Payers must approve this contract first.
-contract Payeer is ReentrancyGuard {
+///      Deployed behind a UUPS proxy so the app can gain features without changing its address
+///      or losing history. Only the owner can upgrade.
+contract Payeer is Initializable, OwnableUpgradeable, UUPSUpgradeable, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
 
     enum Status {
@@ -50,7 +55,7 @@ contract Payeer is ReentrancyGuard {
     uint256 public constant MAX_BATCH = 50;
     uint256 public constant MAX_MEMO = 280;
 
-    IERC20 public immutable usdc;
+    IERC20 public usdc;
     uint256 public requestCount;
     mapping(uint256 => Request) public requests;
     mapping(uint256 => string) public memoOf;
@@ -76,9 +81,22 @@ contract Payeer is ReentrancyGuard {
     error LengthMismatch();
     error BatchTooLarge();
 
-    constructor(IERC20 _usdc) {
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize(IERC20 _usdc, address owner) external initializer {
+        __Ownable_init(owner);
+        __UUPSUpgradeable_init();
+        __ReentrancyGuard_init();
         usdc = _usdc;
     }
+
+    function _authorizeUpgrade(address) internal override onlyOwner {}
+
+    /// @dev Reserved so later versions can add storage without disturbing existing layout.
+    uint256[45] private __gap;
 
     // ---------------------------------------------------------------- requests
 

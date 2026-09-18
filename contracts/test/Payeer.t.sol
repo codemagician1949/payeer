@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {Test} from "forge-std/Test.sol";
 import {Payeer} from "../src/Payeer.sol";
 import {MockUSDC} from "./mocks/MockUSDC.sol";
@@ -14,7 +15,7 @@ contract PayeerTest is Test {
 
     function setUp() public {
         usdc = new MockUSDC();
-        payeer = new Payeer(usdc);
+        payeer = Payeer(address(new ERC1967Proxy(address(new Payeer()), abi.encodeCall(Payeer.initialize, (usdc, address(this))))));
         for (uint256 i; i < 3; ++i) {
             address a = [alice, bob, carol][i];
             usdc.mint(a, 1_000e6);

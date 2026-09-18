@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {Test} from "forge-std/Test.sol";
 import {Pacts} from "../src/Pacts.sol";
 import {MockUSDC} from "./mocks/MockUSDC.sol";
@@ -21,7 +22,7 @@ contract PactsTest is Test {
     function setUp() public {
         vm.warp(1_800_000_000);
         usdc = new MockUSDC();
-        pacts = new Pacts(usdc, resolver, owner);
+        pacts = Pacts(address(new ERC1967Proxy(address(new Pacts()), abi.encodeCall(Pacts.initialize, (usdc, resolver, owner)))));
         address[4] memory people = [alice, bob, carol, dave];
         for (uint256 i; i < people.length; ++i) {
             _fund(people[i]);

@@ -3,8 +3,10 @@ pragma solidity ^0.8.28;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 
 /// @title Pacts
 /// @notice Group escrow in USDC. Everyone stakes the same amount on one of several outcomes.
@@ -16,7 +18,8 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 ///            dispute within the challenge window, which drops the pact back to path 1.
 ///         3. Nothing settled by `resolveBy` -> everyone can reclaim their stake.
 ///         Outcome 0 means "void" and refunds everyone. Funds are never stuck.
-contract Pacts is Ownable, ReentrancyGuard {
+///      Deployed behind a UUPS proxy: upgradeable by the owner, keeping its address and history.
+contract Pacts is Initializable, OwnableUpgradeable, UUPSUpgradeable, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
 
     enum Phase {
@@ -56,7 +59,7 @@ contract Pacts is Ownable, ReentrancyGuard {
     uint256 public constant MAX_DURATION = 365 days;
     uint256 public constant MAX_TEXT = 500;
 
-    IERC20 public immutable usdc;
+    IERC20 public usdc;
     address public resolver;
     uint256 public pactCount;
 
@@ -109,11 +112,24 @@ contract Pacts is Ownable, ReentrancyGuard {
     error TooEarly();
     error NothingToClaim();
 
-    constructor(IERC20 _usdc, address _resolver, address _owner) Ownable(_owner) {
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize(IERC20 _usdc, address _resolver, address _owner) external initializer {
+        __Ownable_init(_owner);
+        __UUPSUpgradeable_init();
+        __ReentrancyGuard_init();
         usdc = _usdc;
         resolver = _resolver;
         emit ResolverUpdated(_resolver);
     }
+
+    function _authorizeUpgrade(address) internal override onlyOwner {}
+
+    /// @dev Reserved so later versions can add storage without disturbing existing layout.
+    uint256[45] private __gap;
 
     function setResolver(address _resolver) external onlyOwner {
         resolver = _resolver;

@@ -42,6 +42,7 @@ Some design notes:
 
 - **State lives on-chain, not in a database.** Requests, pact terms, participants and each user's activity feed are all read straight from the contracts, so the app has no backend to keep in sync. Arc RPCs cap `eth_getLogs` ranges at a few thousand blocks (~30 minutes of history at 0.5s blocks), so the activity feed is stored in contract storage rather than reconstructed from events.
 - **The AI can propose, never pay.** The resolver key can only call `proposeOutcome`. Participants can dispute, and a disputed result falls back to unanimous agreement. A wrong or manipulated answer cannot move anyone's money on its own.
+- **Upgradeable by design.** Both contracts sit behind UUPS proxies with storage gaps, so features can be added later without asking anyone to move to a new address.
 - **Payment links have real link previews.** Sharing one into a chat app shows the amount and note, read live from the chain.
 - **Arc's USDC is the gas token.** Balance and gas come from the same pot, and transfers route through native precompiles (including a blocklist check). The fork tests stub those precompiles, which is the only way to exercise the real token off-chain.
 - **Chat needs a long-running process.** `server/chat.mjs` holds WebSocket connections, so it runs as its own service rather than on a serverless platform. The web app works fine without it; chat just doesn't appear.
@@ -75,10 +76,21 @@ Arc mainnet is chain 5042 (`https://rpc.mainnet.arc.io`), testnet is 5042002 (`h
 
 ## Arc contracts
 
-| | Address |
-|---|---|
-| Payeer | [`0x7e7b5dbae3adb3d94a27dcfb383bdb98667145e6`](https://explorer.arc.io/address/0x7e7b5dbae3adb3d94a27dcfb383bdb98667145e6) |
-| Pacts | [`0x3f00db811a4ab36e7a953a9c9bc841499fc2eaf6`](https://explorer.arc.io/address/0x3f00db811a4ab36e7a953a9c9bc841499fc2eaf6) |
+Both are UUPS proxies: the addresses below are permanent, and the logic behind them can be
+replaced by the owner without moving funds or losing history.
+
+| | Address (proxy) | Implementation |
+|---|---|---|
+| Payeer | [`0x7659C2E485D3E29dBC36f7E11de9E633ED1FDa06`](https://explorer.arc.io/address/0x7659C2E485D3E29dBC36f7E11de9E633ED1FDa06) | `0xEa3245683904A3CF3ad5A5ada56Af007dBc9eaB6` |
+| Pacts | [`0x1D485d692E5D21e614Cd5197Cd0f05f5b72A23D2`](https://explorer.arc.io/address/0x1D485d692E5D21e614Cd5197Cd0f05f5b72A23D2) | `0xd74f3b3f4f2FF04E3eFE2B494A4BE93Eb55E7A94` |
+
+Upgrading is deliberate and owner-only: `upgradeToAndCall` on the proxy, from the owner. The
+upgrade tests cover that a stranger can't do it, that live pacts keep their escrowed stakes
+across an upgrade, and that transferring ownership moves the upgrade rights with it.
+
+**The owner can replace the logic of a contract holding other people's escrowed USDC.** That
+power should live with a wallet you trust — ideally a hardware wallet or a multisig — not with
+a hot key.
 
 ## Licence
 
