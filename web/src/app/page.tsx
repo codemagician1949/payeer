@@ -8,6 +8,12 @@ import { ConnectButton } from "@/components/connect";
 import { FirstRun } from "@/components/first-run";
 import { RequestRow } from "@/components/request-row";
 import { Card, EmptyState, Skeleton } from "@/components/ui";
+import {
+  Card as ShadCard,
+  CardDescription as ShadCardDescription,
+  CardHeader as ShadCardHeader,
+  CardTitle as ShadCardTitle,
+} from "@/components/shadcn/card";
 import { useUsdcBalance } from "@/hooks/use-usdc";
 import { useMyRequests } from "@/hooks/use-payeer";
 import { formatUsdc } from "@/lib/format";
@@ -117,10 +123,19 @@ function Dashboard({ address }: { address: `0x${string}` }) {
 
 function Landing() {
   return (
-    <div className="flex flex-col items-center pt-6 text-center sm:pt-16">
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-surface/70 px-3 py-1.5 text-xs font-medium text-muted">
-        <span className="size-1.5 rounded-full bg-success" /> Live on Arc
+    <div className="flex flex-col items-center pt-4 text-center sm:pt-12">
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-surface/70 px-3 py-1.5 text-xs font-medium text-muted backdrop-blur"
+      >
+        <span className="relative flex size-1.5">
+          <span className="absolute inline-flex size-full animate-ping rounded-full bg-success opacity-75" />
+          <span className="relative inline-flex size-1.5 rounded-full bg-success" />
+        </span>
+        Live on Arc mainnet
       </motion.div>
+
       <motion.h1
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
@@ -129,34 +144,82 @@ function Landing() {
       >
         Money between friends, <span className="text-gradient">sorted.</span>
       </motion.h1>
-      <motion.p initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="mt-5 max-w-xl text-lg text-muted">
-        Request USDC with a link, spin to decide who pays the bill, and lock stakes with friends. Fees are paid in USDC, so there&apos;s nothing else to buy.
+
+      <motion.p
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="mt-5 max-w-xl text-lg text-muted"
+      >
+        Request USDC with a link, spin to decide who pays the bill, and lock stakes with friends. Fees are paid in USDC, so
+        there&apos;s nothing else to buy.
       </motion.p>
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="mt-8 flex flex-wrap justify-center gap-3">
+
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.15 }}
+        className="mt-8 flex flex-wrap justify-center gap-3"
+      >
         <ConnectButton size="lg" label="Get started" />
-        <Link href="/spin" className="inline-flex h-14 items-center rounded-full border border-border bg-surface px-7 font-medium transition hover:bg-surface-2">
+        <Link
+          href="/spin"
+          className="inline-flex h-14 items-center rounded-full border border-border bg-surface/80 px-7 font-medium backdrop-blur transition hover:border-accent/40 hover:bg-surface-2"
+        >
           Try the spinner
         </Link>
       </motion.div>
 
-      <div className="mt-16 grid w-full gap-4 text-left sm:grid-cols-3">
+      <motion.dl
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.25 }}
+        className="mt-10 grid w-full max-w-lg grid-cols-3 gap-px overflow-hidden rounded-2xl border border-border bg-border/60"
+      >
         {[
-          { icon: Link2, title: "Pay links", body: "Fixed or open amounts, expiry, one-tap checkout and QR codes." },
-          { icon: Disc3, title: "Bill spinner", body: "Add names, spin, and the loser gets a payment link instantly." },
-          { icon: Handshake, title: "Pacts", body: "Group escrow that pays out when everyone agrees, or when the AI checks the result." },
+          { value: "~$0.003", label: "per payment" },
+          { value: "<1s", label: "to settle" },
+          { value: "0", label: "extra tokens" },
+        ].map((stat) => (
+          <div key={stat.label} className="bg-surface/80 px-4 py-4 backdrop-blur">
+            <dt className="tabular text-xl font-semibold sm:text-2xl">{stat.value}</dt>
+            <dd className="mt-0.5 text-xs text-muted">{stat.label}</dd>
+          </div>
+        ))}
+      </motion.dl>
+
+      <div className="mt-14 grid w-full gap-4 text-left sm:grid-cols-3">
+        {[
+          { icon: Link2, title: "Pay links", body: "Fixed or open amounts, expiry, one-tap checkout and QR codes.", href: "/request" },
+          { icon: Disc3, title: "Bill spinner", body: "Everyone scans in, one wheel, same result on every phone.", href: "/spin" },
+          { icon: Handshake, title: "Pacts", body: "Group escrow that pays out when everyone agrees, or when the result is checked.", href: "/pacts" },
         ].map((f, i) => (
-          <Card key={f.title} transition={{ delay: 0.2 + i * 0.05 }}>
-            <f.icon className="mb-4 size-6 text-accent" />
-            <p className="font-semibold">{f.title}</p>
-            <p className="mt-1 text-sm text-muted">{f.body}</p>
-          </Card>
+          <motion.div key={f.title} initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 + i * 0.06 }}>
+            <Link href={f.href} className="group block h-full">
+              <ShadCard className="halo relative h-full overflow-hidden rounded-[var(--radius-card)] border-border bg-surface/80 backdrop-blur transition group-hover:-translate-y-1 group-hover:border-accent/40">
+                <ShadCardHeader>
+                  <span className="mb-2 flex size-11 items-center justify-center rounded-2xl bg-accent/12 text-accent transition group-hover:bg-accent group-hover:text-accent-fg">
+                    <f.icon className="size-5" />
+                  </span>
+                  <ShadCardTitle className="text-base">{f.title}</ShadCardTitle>
+                  <ShadCardDescription className="text-sm text-muted">{f.body}</ShadCardDescription>
+                </ShadCardHeader>
+              </ShadCard>
+            </Link>
+          </motion.div>
         ))}
       </div>
 
       <div className="mt-10 flex flex-wrap justify-center gap-x-8 gap-y-3 text-sm text-muted">
-        <span className="inline-flex items-center gap-2"><Zap className="size-4 text-accent" /> Sub-second settlement</span>
-        <span className="inline-flex items-center gap-2"><ShieldCheck className="size-4 text-accent" /> Non-custodial</span>
-        <span className="inline-flex items-center gap-2"><Sparkles className="size-4 text-accent" /> Fees in dollars</span>
+        <span className="inline-flex items-center gap-2">
+          <Zap className="size-4 text-accent" /> Sub-second settlement
+        </span>
+        <span className="inline-flex items-center gap-2">
+          <ShieldCheck className="size-4 text-accent" /> Non-custodial
+        </span>
+        <span className="inline-flex items-center gap-2">
+          <Sparkles className="size-4 text-accent" /> Fees in dollars
+        </span>
       </div>
     </div>
   );

@@ -1,7 +1,8 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { Divide, Link2, Plus, RotateCcw, Shuffle, Volume2, VolumeX, X } from "lucide-react";
+import { Divide, Link2, Plus, QrCode, RotateCcw, Shuffle, Volume2, VolumeX, X } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useConnection } from "wagmi";
 import { ConnectButton } from "@/components/connect";
@@ -9,6 +10,7 @@ import { Sheet } from "@/components/sheet";
 import { ShareLink } from "@/components/share-link";
 import { AmountInput, Avatar, Button, Card, Input, PageHeader } from "@/components/ui";
 import { secureRandomIndex, Wheel, type WheelHandle } from "@/components/wheel";
+import { newRoomCode } from "@/hooks/use-spin-room";
 import { useTx } from "@/hooks/use-tx";
 import { payeerAbi } from "@/lib/abi";
 import { PAYEER } from "@/lib/config";
@@ -52,6 +54,7 @@ function useTick(enabled: boolean) {
 }
 
 export default function SpinPage() {
+  const router = useRouter();
   const { isConnected } = useConnection();
   const wheel = useRef<WheelHandle>(null);
   const [names, setNames] = useState<string[]>([]);
@@ -130,10 +133,14 @@ export default function SpinPage() {
         <div className="relative py-4">
           <Wheel ref={wheel} names={names.length ? names : ["Add", "names", "to", "spin"]} onTick={spinning ? tick : undefined} />
         </div>
-        <div className="mx-auto mt-4 max-w-[380px]">
+        <div className="mx-auto mt-4 max-w-[380px] space-y-2">
           <Button size="lg" onClick={spin} disabled={names.length < 2} loading={spinning} className="h-16 text-lg">
             {spinning ? "Spinning…" : names.length < 2 ? "Add at least 2 names" : "Spin the wheel"}
           </Button>
+          <Button variant="secondary" className="w-full" onClick={() => router.push(`/spin/${newRoomCode()}`)}>
+            <QrCode className="size-4" /> Everyone on their own phone
+          </Button>
+          <p className="text-center text-xs text-muted">Opens a room others can scan into. They see the same wheel and result.</p>
         </div>
       </div>
 

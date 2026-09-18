@@ -4,7 +4,7 @@ import { headers } from "next/headers";
 import { cookieToInitialState } from "wagmi";
 import { Providers } from "@/components/providers";
 import { Shell } from "@/components/shell";
-import { makeWagmiConfig } from "@/lib/wagmi";
+import { wagmiConfig } from "@/lib/appkit";
 import "./globals.css";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
@@ -30,14 +30,12 @@ export const viewport: Viewport = {
 const themeScript = `try{document.documentElement.dataset.theme=localStorage.getItem("theme")||"dark"}catch(e){document.documentElement.dataset.theme="dark"}`;
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
-  const initialState = cookieToInitialState(makeWagmiConfig(), (await headers()).get("cookie"));
+  const initialState = cookieToInitialState(wagmiConfig, (await headers()).get("cookie"));
 
   return (
     <html lang="en" data-theme="dark" suppressHydrationWarning className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
-      </head>
       <body>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <Providers initialState={initialState}>
           <Shell>{children}</Shell>
         </Providers>

@@ -33,11 +33,14 @@ const pactsAbi = [
   { type: "function", name: "getOptions", stateMutability: "view", inputs: [{ type: "uint256" }], outputs: [{ type: "string[]" }] },
 ];
 
-/** room id -> { messages: [], clients: Set } */
+/**
+ * room id -> state. Pact rooms are gated on-chain; spin rooms are open to anyone with the
+ * code, since they're a party game with no money held until someone creates a payment link.
+ */
 const rooms = new Map();
 
 function room(id) {
-  if (!rooms.has(id)) rooms.set(id, { messages: [], clients: new Set() });
+  if (!rooms.has(id)) rooms.set(id, { messages: [], clients: new Set(), names: [], bill: "", lastSpin: null, host: null });
   return rooms.get(id);
 }
 
@@ -60,6 +63,7 @@ function presence(roomId) {
 
 async function mayJoin(roomId, address) {
   const [kind, id] = roomId.split(":");
+  if (kind === "spin") return { ok: true };
   if (kind === "pact") {
     if (!PACTS) return { ok: false, reason: "Chat isn't configured for this deployment." };
     const pick = await client.readContract({ address: PACTS, abi: pactsAbi, functionName: "pickOf", args: [BigInt(id), address] });
@@ -137,11 +141,27 @@ wss.on("connection", (ws) => {
       return send(ws, { type: "error", error: "Malformed message." });
     }
 
+    if (msg.type === "join-spin") {
+      const roomId = String(msg.room ?? "");
+      if (!/^spin:[A-Z0-9]{4,8}$/.test(roomId)) return send(ws, { type: "error", error: "Unknown room." });
+      const who = String(msg.name ?? "").trim().slice(0, 24) || "Guest";
+      ws.address = who;
+      ws.room = roomId;
+      const r = room(roomId);
+      r.clients.add(ws);
+      r.host ??= who;
+      if (!r.names.includes(who)) r.names.push(who);
+      send(ws, { type: "ready", room: roomId, messages: r.messages, names: r.names, bill: r.bill, host: r.host, you: who });
+      broadcast(roomId, { type: "room", names: r.names, bill: r.bill, host: r.host });
+      presence(roomId);
+      return;
+    }
+
     if (msg.type === "hello") {
       try {
         const address = getAddress(msg.address);
         const roomId = String(msg.room ?? "");
-        if (!/^(pact):\d{1,18}$/.test(roomId)) return send(ws, { type: "error", error: "Unknown room." });
+        if (!/^(pact:\d{1,18}|spin:[A-Z0-9]{4,8})$/.test(roomId)) return send(ws, { type: "error", error: "Unknown room." });
         if (Math.abs(Date.now() - Number(msg.issuedAt)) > SIGNATURE_TTL_MS) {
           return send(ws, { type: "error", error: "That sign-in expired. Try again." });
         }
@@ -168,6 +188,24 @@ wss.on("connection", (ws) => {
     ws.hits = ws.hits.filter((t) => now - t < RATE.windowMs);
     if (ws.hits.length >= RATE.max) return send(ws, { type: "error", error: "Slow down a moment." });
     ws.hits.push(now);
+
+    if (msg.type === "room" && ws.room?.startsWith("spin:")) {
+      const r = room(ws.room);
+      if (Array.isArray(msg.names)) r.names = msg.names.map((n) => String(n).trim().slice(0, 24)).filter(Boolean).slice(0, 12);
+      if (typeof msg.bill === "string") r.bill = msg.bill.slice(0, 20);
+      broadcast(ws.room, { type: "room", names: r.names, bill: r.bill, host: r.host });
+      return;
+    }
+
+    if (msg.type === "spin" && ws.room?.startsWith("spin:")) {
+      const r = room(ws.room);
+      if (!r.names.length) return;
+      // The server picks, so every screen lands on the same person.
+      const winner = Math.floor(Math.random() * r.names.length);
+      r.lastSpin = { winner, at: Date.now(), by: ws.address };
+      broadcast(ws.room, { type: "spin", winner, name: r.names[winner], by: ws.address });
+      return;
+    }
 
     if (msg.type === "typing") {
       for (const client of room(ws.room).clients) {

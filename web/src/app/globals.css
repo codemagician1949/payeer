@@ -102,18 +102,72 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Its own stacking context, so the glow sits above the page background but below content. */
+.aurora {
+  position: relative;
+  isolation: isolate;
+}
+
 /* Soft aurora behind everything; fixed so it doesn't scroll. */
 .aurora::before {
   content: "";
   position: fixed;
   inset: -20% -10% auto -10%;
-  height: 70vh;
+  height: 80vh;
   background:
-    radial-gradient(40% 50% at 20% 30%, var(--glow), transparent 70%),
-    radial-gradient(35% 45% at 80% 10%, oklch(0.66 0.17 235 / 0.14), transparent 70%);
-  filter: blur(40px);
+    radial-gradient(38% 46% at 18% 24%, var(--glow), transparent 72%),
+    radial-gradient(34% 42% at 82% 8%, oklch(0.66 0.17 235 / 0.16), transparent 72%),
+    radial-gradient(30% 36% at 52% 46%, oklch(0.72 0.16 320 / 0.12), transparent 72%);
+  filter: blur(46px);
   pointer-events: none;
   z-index: -1;
+  animation: drift 24s ease-in-out infinite alternate;
+}
+
+/* Faint grid, so the dark background has texture instead of reading as empty. */
+.aurora::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, color-mix(in oklch, var(--fg) 7%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in oklch, var(--fg) 7%, transparent) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: radial-gradient(75% 60% at 50% 0%, black, transparent 78%);
+  pointer-events: none;
+  z-index: -1;
+  opacity: 0.5;
+}
+
+@keyframes drift {
+  from {
+    transform: translate3d(-2%, -1%, 0) scale(1);
+  }
+  to {
+    transform: translate3d(3%, 2%, 0) scale(1.08);
+  }
+}
+
+/* Slow conic sheen for the hero panel edge. */
+@keyframes spin-slow {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.halo::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: conic-gradient(from 0deg, transparent 0 70%, var(--accent) 85%, transparent 100%);
+  -webkit-mask: linear-gradient(black, black) content-box, linear-gradient(black, black);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: spin-slow 8s linear infinite;
+  opacity: 0.6;
+  pointer-events: none;
 }
 
 .text-gradient {

@@ -46,6 +46,7 @@ export function useChat(room: string | undefined, address: Address | undefined, 
       ws.onmessage = (event) => {
         const data = JSON.parse(event.data);
         if (data.type === "ready") {
+          setError(undefined);
           setMessages(data.messages ?? []);
           setStatus("ready");
         } else if (data.type === "msg") {
@@ -64,10 +65,13 @@ export function useChat(room: string | undefined, address: Address | undefined, 
         }
       };
       ws.onerror = () => {
+        if (socket.current !== ws) return;
         setError("Couldn't reach the chat server.");
         setStatus("error");
       };
       ws.onclose = () => {
+        // A previous socket closing must not disown the one that replaced it.
+        if (socket.current !== ws) return;
         socket.current = null;
         setStatus((s) => (s === "error" ? s : "idle"));
       };

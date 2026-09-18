@@ -4,16 +4,18 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 import { Toaster } from "sonner";
 import { WagmiProvider, type State } from "wagmi";
-import { makeWagmiConfig } from "@/lib/wagmi";
+import { startAppKit, wagmiConfig } from "@/lib/appkit";
+
+// Reown's modal is created once, before React renders, so its web components are ready.
+startAppKit();
 
 export function Providers({ children, initialState }: { children: ReactNode; initialState?: State }) {
-  const [config] = useState(makeWagmiConfig);
   const [queryClient] = useState(
     () => new QueryClient({ defaultOptions: { queries: { staleTime: 5_000, refetchOnWindowFocus: true } } }),
   );
 
   return (
-    <WagmiProvider config={config} initialState={initialState}>
+    <WagmiProvider config={wagmiConfig} initialState={initialState}>
       <QueryClientProvider client={queryClient}>
         {children}
         <Toaster

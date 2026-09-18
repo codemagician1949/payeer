@@ -19,6 +19,8 @@ Funds can never get stuck: if nothing is settled by the deadline, everyone can r
 
 **Batch payouts** — Pay up to 50 people in one transaction. Paste addresses and amounts straight from a spreadsheet.
 
+**Spinner rooms** — Start a room, everyone scans the QR code and joins by name (no wallet needed). One wheel, synchronised: the server picks the winner so every phone lands on the same person, with a shared chat and a shared bill total. Whoever ends up paying can turn it into a payment link on the spot.
+
 **Group chat** — Everyone in a pact gets a live chat, over WebSockets. Membership is checked on-chain, so only people who actually staked can read or post, and they prove who they are by signing a message (free, moves no money). Start a line with `/ask` and an AI helper answers questions about how any of it works.
 
 **Add money** — Most people's USDC is on Base, Arbitrum, Optimism or Ethereum rather than Arc. The Add money page moves it across with Circle's CCTP: burn on the source chain, wait for Circle's attestation, mint on Arc. If the page is closed mid-transfer the funds aren't lost; reopening it offers to finish collecting them.
@@ -34,7 +36,8 @@ contracts/   Foundry. Payeer.sol (requests, sends, batch payouts, activity feed)
              that run every flow against Arc mainnet's real USDC.
 web/         Next.js 16, Tailwind v4, shadcn/ui, wagmi v3 + viem, Motion.
              app/api/resolve   the AI result checker (Claude, or Groq)
-             server/chat.mjs   the WebSocket chat server
+             server/chat.mjs   the WebSocket server (pact chat + spinner rooms)
+             e2e/              browser tests, including a two-browser room test
              lib/cctp.ts       cross-chain USDC transfers into Arc
 ```
 
@@ -45,6 +48,7 @@ Some design notes:
 - **Upgradeable by design.** Both contracts sit behind UUPS proxies with storage gaps, so features can be added later without asking anyone to move to a new address.
 - **Payment links have real link previews.** Sharing one into a chat app shows the amount and note, read live from the chain.
 - **Arc's USDC is the gas token.** Balance and gas come from the same pot, and transfers route through native precompiles (including a blocklist check). The fork tests stub those precompiles, which is the only way to exercise the real token off-chain.
+- **Dev servers must be reached on the same host they were started on.** Next blocks cross-origin dev resources, so opening `127.0.0.1` when the server expects `localhost` silently breaks hydration — the page renders but nothing responds. `allowedDevOrigins` in `next.config.ts` covers both.
 - **Chat needs a long-running process.** `server/chat.mjs` holds WebSocket connections, so it runs as its own service rather than on a serverless platform. The web app works fine without it; chat just doesn't appear.
 
 ## Running it
@@ -59,8 +63,19 @@ forge test --match-path test/ArcFork.t.sol --fork-url arc    # against real Arc 
 cd web && cp .env.example .env.local   # fill in the contract addresses
 pnpm install
 pnpm dev     # the app
-pnpm chat    # the chat server, in a second terminal
+pnpm chat    # the chat + rooms server, in a second terminal
 ```
+
+Browser tests (needs both running):
+
+```bash
+node e2e/run.mjs http://127.0.0.1:3000           # every page, wallet connection, mobile layout
+node e2e/run.mjs http://127.0.0.1:3000 --spend   # also creates and pays a real request
+node e2e/room.mjs http://127.0.0.1:3000          # two browsers in one spinner room
+```
+
+The tests drive a real browser and inject a test wallet that signs with viem, so wallet flows are
+exercised rather than mocked.
 
 Deploying:
 
