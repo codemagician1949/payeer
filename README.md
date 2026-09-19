@@ -218,6 +218,10 @@ The chat server listens on `PORT`, which the host provides.
 Add the app's domain to Reown (cloud.reown.com → your project → Allowed Domains), or the wallet
 modal will refuse to open in production.
 
+Deploying to Vercel works the same way: set the root directory to `web` and add the same
+variables. Without `NEXT_PUBLIC_REOWN_PROJECT_ID` the app still serves — the connect button
+reads "Wallets unavailable" — rather than erroring on every request.
+
 ## Arc contracts
 
 Both are UUPS proxies: the addresses below are permanent, and the logic behind them can be
