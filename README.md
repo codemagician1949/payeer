@@ -153,6 +153,60 @@ pnpm dev             # back to Arc mainnet
 
 The gate says so on screen rather than hiding the option silently.
 
+## Deploying
+
+Two processes: the Next.js app, and the chat/rooms server, which holds WebSocket connections and
+so needs somewhere long-running. Railway hosts both, and its CLI deploys straight from a working
+copy — no GitHub connection required, which helps when the repo lives under a different account.
+
+```bash
+npm i -g @railway/cli
+railway login
+cd web
+
+# The app
+railway init            # create the project
+railway up              # deploys this directory
+railway domain          # gives it a URL
+
+# The chat server: add a second service in the same project
+railway add --service chat
+railway up --service chat
+railway domain --service chat
+```
+
+Point each service at the right config with `RAILWAY_CONFIG_FILE`: `railway.web.json` for the app,
+`railway.chat.json` for chat (it adds a `/health` check).
+
+Variables for the **app** service:
+
+```
+NEXT_PUBLIC_NETWORK=arc
+NEXT_PUBLIC_PAYEER_ADDRESS=0x7659C2E485D3E29dBC36f7E11de9E633ED1FDa06
+NEXT_PUBLIC_PACTS_ADDRESS=0x1D485d692E5D21e614Cd5197Cd0f05f5b72A23D2
+NEXT_PUBLIC_REOWN_PROJECT_ID=...
+NEXT_PUBLIC_CHAT_URL=wss://<chat service domain>
+RESOLVER_PRIVATE_KEY=...        # optional, for AI-checked pacts
+GROQ_API_KEY=...                # optional, powers the in-chat helper
+CIRCLE_API_KEY=...              # optional, enables email sign-in
+NEXT_PUBLIC_CIRCLE_APP_ID=...
+```
+
+And for the **chat** service:
+
+```
+NEXT_PUBLIC_NETWORK=arc
+NEXT_PUBLIC_PACTS_ADDRESS=0x1D485d692E5D21e614Cd5197Cd0f05f5b72A23D2
+GROQ_API_KEY=...
+ALLOWED_ORIGINS=https://<app service domain>
+```
+
+`ALLOWED_ORIGINS` keeps other sites from opening sockets against your rooms; leave it unset locally.
+The chat server listens on `PORT`, which the host provides.
+
+Add the app's domain to Reown (cloud.reown.com → your project → Allowed Domains), or the wallet
+modal will refuse to open in production.
+
 ## Arc contracts
 
 Both are UUPS proxies: the addresses below are permanent, and the logic behind them can be

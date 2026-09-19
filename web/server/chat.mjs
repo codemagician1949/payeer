@@ -12,7 +12,7 @@ import { WebSocketServer } from "ws";
 import { createPublicClient, http, verifyMessage, getAddress } from "viem";
 import { arc, arcTestnet, foundry } from "viem/chains";
 
-const PORT = Number(process.env.CHAT_PORT ?? 3112);
+const PORT = Number(process.env.PORT ?? process.env.CHAT_PORT ?? 3112);
 const NETWORK = process.env.NEXT_PUBLIC_NETWORK ?? "arc";
 const PACTS = process.env.NEXT_PUBLIC_PACTS_ADDRESS;
 const GROQ_KEY = process.env.GROQ_API_KEY;
@@ -26,6 +26,11 @@ const HISTORY = 200;
 const SIGNATURE_TTL_MS = 10 * 60 * 1000;
 const MAX_TEXT = 1000;
 const RATE = { windowMs: 10_000, max: 15 };
+/** Comma-separated origins allowed to open a socket. Unset means any, which suits local work. */
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS ?? "")
+  .split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
 
 const pactsAbi = [
   { type: "function", name: "pickOf", stateMutability: "view", inputs: [{ type: "uint256" }, { type: "address" }], outputs: [{ type: "uint8" }] },
@@ -128,7 +133,10 @@ const server = createServer((req, res) => {
   res.end(JSON.stringify({ ok: req.url === "/health", rooms: rooms.size }));
 });
 
-const wss = new WebSocketServer({ server });
+const wss = new WebSocketServer({
+  server,
+  verifyClient: ({ origin }) => ALLOWED_ORIGINS.length === 0 || (!!origin && ALLOWED_ORIGINS.includes(origin)),
+});
 
 wss.on("connection", (ws) => {
   ws.isAlive = true;
@@ -265,5 +273,7 @@ const heartbeat = setInterval(() => {
 wss.on("close", () => clearInterval(heartbeat));
 
 server.listen(PORT, () => {
-  console.log(`Payeer chat listening on :${PORT} (network ${NETWORK}, pacts ${PACTS ?? "unset"})`);
+  console.log(
+    `Payeer chat listening on :${PORT} (network ${NETWORK}, pacts ${PACTS ?? "unset"}, origins ${ALLOWED_ORIGINS.join(", ") || "any"})`,
+  );
 });
