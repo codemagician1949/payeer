@@ -178,6 +178,17 @@ railway domain --service chat
 Point each service at the right config with `RAILWAY_CONFIG_FILE`: `railway.web.json` for the app,
 `railway.chat.json` for chat (it adds a `/health` check).
 
+`NEXT_PUBLIC_*` values are compiled into the app at build time, so set the variables **before**
+the build you intend to keep — a deploy that ran without them has no contract addresses in it.
+`scripts/railway-env.sh` copies them across from `.env.local`:
+
+```bash
+./scripts/railway-env.sh web  <app-domain> <chat-domain>
+railway up                                  # rebuild with the variables baked in
+./scripts/railway-env.sh chat <app-domain> <chat-domain>
+railway up --service chat
+```
+
 Variables for the **app** service:
 
 ```
