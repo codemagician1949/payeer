@@ -9,7 +9,8 @@
     "lint": "eslint",
     "abi": "cd ../contracts && forge build && cd ../web && node scripts/gen-abi.mjs",
     "typecheck": "tsc --noEmit --incremental false",
-    "chat": "node --env-file=.env.local server/chat.mjs"
+    "chat": "node --env-file=.env.local server/chat.mjs",
+    "dev:testnet": "NEXT_PUBLIC_NETWORK=arc-testnet NEXT_PUBLIC_PAYEER_ADDRESS=0xBD830B36c543dd6a0604dDeDAC42C0C6B0e36c0a NEXT_PUBLIC_PACTS_ADDRESS=0xeAD7d8d12852bB45B966864957A35f8c603fC208 next dev"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.126.0",

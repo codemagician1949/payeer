@@ -55,6 +55,13 @@ export function RequireWallet({ title, body, children }: { title: string; body: 
           <ConnectButton size="lg" label="Connect to continue" />
         </div>
 
+        {circle.wrongNetwork && (
+          <p className="mt-3 text-xs text-muted">
+            Email sign-in is set up, but this Circle key covers a different network. Run{" "}
+            <code className="font-mono text-fg">pnpm dev:testnet</code> to try it, or add a live key.
+          </p>
+        )}
+
         <ul className="mt-6 space-y-2 text-left">
           {reassurances.map((r) => (
             <li key={r.text} className="flex items-center gap-3 rounded-2xl bg-surface-2/60 px-4 py-2.5 text-sm text-muted">

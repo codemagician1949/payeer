@@ -15,6 +15,8 @@ export type CircleSession = {
 type CircleState = {
   /** Whether this deployment can offer Circle email sign-in at all. */
   available: boolean;
+  /** Configured, but the Circle key covers a different network than the app is on. */
+  wrongNetwork: boolean;
   session?: CircleSession;
   busy: boolean;
   signIn: (email: string) => Promise<void>;
@@ -34,6 +36,7 @@ export function useCircle() {
 
 export function CircleProvider({ children }: { children: ReactNode }) {
   const [available, setAvailable] = useState(false);
+  const [wrongNetwork, setWrongNetwork] = useState(false);
   const [session, setSession] = useState<CircleSession>();
   const [busy, setBusy] = useState(false);
   const [sdk, setSdk] = useState<Sdk>();
@@ -42,7 +45,11 @@ export function CircleProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     fetch("/api/circle/config")
       .then((r) => r.json())
-      .then((c) => !cancelled && setAvailable(!!c.available))
+      .then((c) => {
+        if (cancelled) return;
+        setAvailable(!!c.available);
+        setWrongNetwork(!!c.configured && !c.matchesApp);
+      })
       .catch(() => {});
     try {
       const saved = sessionStorage.getItem(STORAGE_KEY);
@@ -155,8 +162,8 @@ export function CircleProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo<CircleState>(
-    () => ({ available, session, busy, signIn, signOut: () => persist(undefined), execute }),
-    [available, session, busy, signIn, persist, execute],
+    () => ({ available, wrongNetwork, session, busy, signIn, signOut: () => persist(undefined), execute }),
+    [available, wrongNetwork, session, busy, signIn, persist, execute],
   );
 
   return <Context.Provider value={value}>{children}</Context.Provider>;

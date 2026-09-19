@@ -123,6 +123,19 @@ Payeer's own contracts, and only `approve` on USDC.
 
 Arc mainnet is chain 5042 (`https://rpc.mainnet.arc.io`), testnet is 5042002 (`https://rpc.testnet.arc.io`, funded from [faucet.circle.com](https://faucet.circle.com)). USDC is at `0x3600000000000000000000000000000000000000` on both, with 6 decimals through its token interface.
 
+## Trying email sign-in
+
+A Circle key is scoped to one side of the network divide, so email sign-in only appears where the
+key can actually create a wallet. With a `TEST_API_KEY`, run the app against Arc testnet, where the
+contracts are also deployed:
+
+```bash
+pnpm dev:testnet     # Arc testnet + the testnet contracts
+pnpm dev             # back to Arc mainnet
+```
+
+The gate says so on screen rather than hiding the option silently.
+
 ## Arc contracts
 
 Both are UUPS proxies: the addresses below are permanent, and the logic behind them can be
@@ -132,6 +145,13 @@ replaced by the owner without moving funds or losing history.
 |---|---|---|
 | Payeer | [`0x7659C2E485D3E29dBC36f7E11de9E633ED1FDa06`](https://explorer.arc.io/address/0x7659C2E485D3E29dBC36f7E11de9E633ED1FDa06) | `0xEa3245683904A3CF3ad5A5ada56Af007dBc9eaB6` |
 | Pacts | [`0x1D485d692E5D21e614Cd5197Cd0f05f5b72A23D2`](https://explorer.arc.io/address/0x1D485d692E5D21e614Cd5197Cd0f05f5b72A23D2) | `0xd74f3b3f4f2FF04E3eFE2B494A4BE93Eb55E7A94` |
+
+On Arc testnet (chain 5042002), for trying email sign-in:
+
+| | Address (proxy) |
+|---|---|
+| Payeer | `0xBD830B36c543dd6a0604dDeDAC42C0C6B0e36c0a` |
+| Pacts | `0xeAD7d8d12852bB45B966864957A35f8c603fC208` |
 
 Upgrading is deliberate and owner-only: `upgradeToAndCall` on the proxy, from the owner. The
 upgrade tests cover that a stranger can't do it, that live pacts keep their escrowed stakes
