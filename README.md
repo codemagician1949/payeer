@@ -165,18 +165,24 @@ railway login
 cd web
 
 # The app
-railway init            # create the project
-railway up              # deploys this directory
-railway domain          # gives it a URL
+railway init
+railway up
+railway domain
 
-# The chat server: add a second service in the same project
+# The chat server: a second service in the same project
 railway add --service chat
-railway up --service chat
 railway domain --service chat
+railway service                       # select chat
+./scripts/railway-env.sh chat <app-domain> <chat-domain>   # sets SERVICE=chat
+railway up
 ```
 
-Point each service at the right config with `RAILWAY_CONFIG_FILE`: `railway.web.json` for the app,
-`railway.chat.json` for chat (it adds a `/health` check).
+Check it with `curl https://<chat-domain>/health`, which answers `{"ok":true,"rooms":0}`. HTML back
+means the service is still running the website — its `SERVICE` variable didn't take.
+
+Both services deploy the same directory, and the start command picks which one to be: set
+`SERVICE=chat` on the chat service and it runs the chat server instead of the website. That avoids
+relying on per-service config files, which hosts resolve inconsistently.
 
 `NEXT_PUBLIC_*` values are compiled into the app at build time, so set the variables **before**
 the build you intend to keep — a deploy that ran without them has no contract addresses in it.

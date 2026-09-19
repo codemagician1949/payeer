@@ -48,8 +48,9 @@ case "$target" in
       "NEXT_PUBLIC_PACTS_ADDRESS=$(read_var NEXT_PUBLIC_PACTS_ADDRESS)" \
       "GROQ_API_KEY=$(read_var GROQ_API_KEY)" \
       "GROQ_MODEL=$(read_var GROQ_MODEL)" \
-      "ALLOWED_ORIGINS=https://$app_domain"
-    echo "Set for chat. Redeploy: railway up"
+      "ALLOWED_ORIGINS=https://$app_domain" \
+      "SERVICE=chat"
+    echo "Set for chat (SERVICE=chat switches the start command). Redeploy: railway up"
     ;;
   *)
     echo "First argument must be web or chat"; exit 1;;
