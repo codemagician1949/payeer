@@ -32,6 +32,7 @@ const browser = await chromium.launch();
 async function joinAs(person) {
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   const page = await context.newPage();
+  page.setDefaultNavigationTimeout(90000);
   await page.goto(`${base}/spin/${code}`, { waitUntil: "load" });
   await page.waitForTimeout(2000);
   await page.fill('input[placeholder="Your name"]', person);
@@ -72,7 +73,7 @@ await check("one spin, and both screens land on the same person", async () => {
   await ada.page.getByRole("button", { name: /spin for everyone/i }).click();
   const winners = await Promise.all(
     [ada, grace].map(async ({ page }) => {
-      await page.waitForSelector("text=/pays!|You pay!/", { timeout: 60000 });
+      await page.waitForSelector("text=/pays!|You pay!/", { timeout: 90000 });
       const text = await page.getByText(/pays!|You pay!/).first().textContent();
       return text.replace(/\s*(pays!|You pay!)/, "").trim();
     }),

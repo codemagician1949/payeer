@@ -8,6 +8,7 @@ import { useConfig } from "wagmi";
 import { useActiveAccount } from "@/hooks/use-account";
 import { ConnectButton } from "@/components/connect";
 import { Sheet } from "@/components/sheet";
+import { SendMoney } from "@/components/send-money";
 import { ShareLink } from "@/components/share-link";
 import { ScrollArea } from "@/components/shadcn/scroll-area";
 import { AmountInput, Avatar, Button, Card, Input, Skeleton } from "@/components/ui";
@@ -110,7 +111,16 @@ function Room({ code, name }: { code: string; name: string }) {
     bottom.current?.scrollIntoView({ behavior: "smooth" });
   }, [room.messages.length]);
 
+  // Share where to pay me, so whoever the wheel picks can send it in one tap.
+  useEffect(() => {
+    if (room.status === "ready" && address && room.addresses[name] !== address) room.sendRoom({ address });
+  }, [room.status, address, name, room]);
+
   const billAmount = parseUsdc(room.bill);
+  // Whoever fronted the bill: the room's host, if they've shared an address.
+  const payTo = room.host && room.host !== name && room.addresses[room.host]
+    ? { name: room.host, address: room.addresses[room.host] }
+    : undefined;
   const share = billAmount && room.names.length ? billAmount / BigInt(room.names.length) : undefined;
   const url = typeof window === "undefined" ? "" : `${window.location.origin}/spin/${code}`;
 
@@ -235,7 +245,24 @@ function Room({ code, name }: { code: string; name: string }) {
             <p className="mt-4 text-3xl font-semibold">{result === name ? "You pay!" : `${result} pays!`}</p>
             {billAmount && <p className="tabular mt-1 text-muted">${formatUsdc(billAmount)} bill</p>}
             <div className="mt-6 space-y-2">
-              {billAmount ? (
+              {billAmount && result === name && payTo ? (
+                <>
+                  {isConnected ? (
+                    <SendMoney
+                      amount={billAmount}
+                      to={payTo.address}
+                      toName={payTo.name}
+                      memo={`Bill from room ${code}`}
+                      onDone={() => setResult(undefined)}
+                    />
+                  ) : (
+                    <div className="flex justify-center">
+                      <ConnectButton size="lg" label="Connect to pay" />
+                    </div>
+                  )}
+                  <p className="text-xs text-muted">Goes straight to {payTo.name}, settled on Arc in about a second.</p>
+                </>
+              ) : billAmount ? (
                 isConnected ? (
                   <>
                     <Button size="lg" loading={tx.busy} onClick={() => createLink("loser").catch(() => {})}>

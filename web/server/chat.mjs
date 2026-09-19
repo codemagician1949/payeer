@@ -8,6 +8,7 @@
  * Run with: pnpm chat
  */
 import { createServer } from "node:http";
+import { randomInt } from "node:crypto";
 import { WebSocketServer } from "ws";
 import { createPublicClient, http, verifyMessage, getAddress } from "viem";
 import { arc, arcTestnet, foundry } from "viem/chains";
@@ -40,7 +41,9 @@ const pactsAbi = [
 const rooms = new Map();
 
 function room(id) {
-  if (!rooms.has(id)) rooms.set(id, { messages: [], clients: new Set(), names: [], bill: "", lastSpin: null, host: null });
+  if (!rooms.has(id)) {
+    rooms.set(id, { messages: [], clients: new Set(), names: [], bill: "", lastSpin: null, host: null, addresses: {} });
+  }
   return rooms.get(id);
 }
 
@@ -151,8 +154,8 @@ wss.on("connection", (ws) => {
       r.clients.add(ws);
       r.host ??= who;
       if (!r.names.includes(who)) r.names.push(who);
-      send(ws, { type: "ready", room: roomId, messages: r.messages, names: r.names, bill: r.bill, host: r.host, you: who });
-      broadcast(roomId, { type: "room", names: r.names, bill: r.bill, host: r.host });
+      send(ws, { type: "ready", room: roomId, messages: r.messages, names: r.names, bill: r.bill, host: r.host, addresses: r.addresses, you: who });
+      broadcast(roomId, { type: "room", names: r.names, bill: r.bill, host: r.host, addresses: r.addresses });
       presence(roomId);
       return;
     }
@@ -193,15 +196,20 @@ wss.on("connection", (ws) => {
       const r = room(ws.room);
       if (Array.isArray(msg.names)) r.names = msg.names.map((n) => String(n).trim().slice(0, 24)).filter(Boolean).slice(0, 12);
       if (typeof msg.bill === "string") r.bill = msg.bill.slice(0, 20);
-      broadcast(ws.room, { type: "room", names: r.names, bill: r.bill, host: r.host });
+      // People can share where to pay them. Only your own name can carry your address.
+      if (typeof msg.address === "string" && /^0x[0-9a-fA-F]{40}$/.test(msg.address)) {
+        r.addresses[ws.address] = msg.address;
+      }
+      broadcast(ws.room, { type: "room", names: r.names, bill: r.bill, host: r.host, addresses: r.addresses });
       return;
     }
 
     if (msg.type === "spin" && ws.room?.startsWith("spin:")) {
       const r = room(ws.room);
       if (!r.names.length) return;
-      // The server picks, so every screen lands on the same person.
-      const winner = Math.floor(Math.random() * r.names.length);
+      // The server picks so every screen lands on the same person. randomInt draws from the
+      // OS entropy pool and rejects biased samples, so each name is equally likely.
+      const winner = randomInt(r.names.length);
       r.lastSpin = { winner, at: Date.now(), by: ws.address };
       broadcast(ws.room, { type: "spin", winner, name: r.names[winner], by: ws.address });
       return;

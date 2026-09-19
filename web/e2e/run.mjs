@@ -40,6 +40,9 @@ const browser = await chromium.launch();
 async function newPage({ key } = {}) {
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   const page = await context.newPage();
+  // A dev server compiles each route on first visit, which can take a while.
+  page.setDefaultNavigationTimeout(90000);
+  page.setDefaultTimeout(45000);
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   // Ignore dev-server hot-reload chatter and third-party wallet telemetry; keep our own errors.
@@ -186,7 +189,7 @@ console.log("\nConnected wallet");
     }
     await page.waitForTimeout(400);
     await page.getByRole("button", { name: /spin the wheel/i }).click();
-    await page.waitForTimeout(8000);
+    await page.waitForTimeout(11000);
     const heading = await page.getByText(/pays!/).first().textContent();
     assert(/Ada|Grace|Linus/.test(heading), `unexpected winner text: ${heading}`);
     await page.keyboard.press("Escape");

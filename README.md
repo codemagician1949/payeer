@@ -25,7 +25,13 @@ Everything Circle provides is called through Circle: wallets and email sign-in v
 `@circle-fin/w3s-pw-web-sdk`, cross-chain USDC via CCTP and Circle's attestation service. No
 third-party stands in for a Circle service.
 
-**Spinner rooms** — Start a room, everyone scans the QR code and joins by name (no wallet needed). One wheel, synchronised: the server picks the winner so every phone lands on the same person, with a shared chat and a shared bill total. Whoever ends up paying can turn it into a payment link on the spot.
+**Spinner rooms** — Start a room, everyone scans the QR code and joins by name (no wallet needed). One wheel, synchronised: the server picks the winner so every phone lands on the same person, with a shared chat and a shared bill total. When the wheel lands on you, you can **pay the person who fronted the bill in one tap**, because anyone signed in shares where to pay them; otherwise the result becomes a payment link.
+
+Both wheels draw from a cryptographic generator with rejection sampling, so every name is exactly
+as likely as every other: `crypto.getRandomValues` in the browser for a solo spin, `crypto.randomInt`
+on the server for a room. Plain modulo arithmetic on a random number quietly favours lower indices;
+rejection sampling discards the biased tail instead. It is not, however, verifiable randomness — a
+host who controlled the server could rig a room spin. Commit-reveal would fix that if it ever matters.
 
 **Group chat** — Everyone in a pact gets a live chat, over WebSockets. Membership is checked on-chain, so only people who actually staked can read or post, and they prove who they are by signing a message (free, moves no money). Start a line with `/ask` and an AI helper answers questions about how any of it works.
 

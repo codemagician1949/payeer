@@ -60,13 +60,14 @@ export const Wheel = forwardRef<WheelHandle, { names: string[]; onTick?: () => v
   useImperativeHandle(ref, () => ({
     async spin(winner) {
       const seg = 360 / n;
-      // Land somewhere inside the winning slice, not dead-center, so it feels natural.
-      const offset = (0.15 + Math.random() * 0.7) * seg;
+      // Land somewhere inside the winning slice, not dead-centre, so it feels natural.
+      const offset = (0.18 + (secureRandomIndex(1000) / 1000) * 0.64) * seg;
       const target = -(winner * seg + offset);
       const current = rotation.get();
       const base = current - (((current % 360) + 360) % 360);
-      const final = base - 360 * (6 + Math.floor(Math.random() * 3)) + ((target % 360) + 360) % 360 - 360;
-      await animate(rotation, final, { duration: 5.2, ease: [0.12, 0.8, 0.18, 1] });
+      const final = base - 360 * (7 + secureRandomIndex(3)) + ((target % 360) + 360) % 360 - 360;
+      // Long, decelerating tail: fast for a second, then a slow creep into the final slice.
+      await animate(rotation, final, { duration: 8.6, ease: [0.08, 0.72, 0.12, 1] });
     },
   }));
 

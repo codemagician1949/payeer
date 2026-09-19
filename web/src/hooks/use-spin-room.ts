@@ -21,6 +21,7 @@ export function useSpinRoom(code: string | undefined, name: string | undefined) 
   const [names, setNames] = useState<string[]>([]);
   const [bill, setBill] = useState("");
   const [host, setHost] = useState<string>();
+  const [addresses, setAddresses] = useState<Record<string, `0x${string}`>>({});
   const [people, setPeople] = useState<string[]>([]);
   const [spin, setSpin] = useState<SpinEvent>();
   const [assistantTyping, setAssistantTyping] = useState(false);
@@ -41,11 +42,13 @@ export function useSpinRoom(code: string | undefined, name: string | undefined) 
         setNames(data.names ?? []);
         setBill(data.bill ?? "");
         setHost(data.host);
+        setAddresses(data.addresses ?? {});
         setStatus("ready");
       } else if (data.type === "room") {
         setNames(data.names ?? []);
         setBill(data.bill ?? "");
         setHost(data.host);
+        setAddresses(data.addresses ?? {});
       } else if (data.type === "spin") {
         setSpin({ winner: data.winner, name: data.name, by: data.by, at: Date.now() });
       } else if (data.type === "msg") {
@@ -79,7 +82,7 @@ export function useSpinRoom(code: string | undefined, name: string | undefined) 
     };
   }, [code, name]);
 
-  const sendRoom = useCallback((update: { names?: string[]; bill?: string }) => {
+  const sendRoom = useCallback((update: { names?: string[]; bill?: string; address?: string }) => {
     socket.current?.send(JSON.stringify({ type: "room", ...update }));
   }, []);
 
@@ -91,7 +94,7 @@ export function useSpinRoom(code: string | undefined, name: string | undefined) 
     socket.current?.send(JSON.stringify({ type: "msg", text }));
   }, []);
 
-  return { status, error, messages, names, bill, host, people, spin, assistantTyping, sendRoom, requestSpin, sendMessage, available: !!CHAT_URL };
+  return { status, error, messages, names, bill, host, addresses, people, spin, assistantTyping, sendRoom, requestSpin, sendMessage, available: !!CHAT_URL };
 }
 
 /** Short, unambiguous room codes: no O/0/I/1 to misread over a table. */

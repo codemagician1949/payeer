@@ -8,6 +8,7 @@ import { useActiveAccount } from "@/hooks/use-account";
 import { useEffect, useRef, useState } from "react";
 import { RequireWallet } from "@/components/require-wallet";
 import { Sheet } from "@/components/sheet";
+import { SendMoney } from "@/components/send-money";
 import { ShareLink } from "@/components/share-link";
 import { AmountInput, Avatar, Button, Card, Input, PageHeader } from "@/components/ui";
 import { secureRandomIndex, Wheel, type WheelHandle } from "@/components/wheel";
@@ -238,6 +239,18 @@ function Spinner() {
                 </>
               ) : (
                 <p className="text-sm text-muted">Add the bill total to turn this into a payment link.</p>
+              )}
+              {billAmount && (
+                <details className="rounded-2xl bg-surface-2/60 p-3 text-left">
+                  <summary className="cursor-pointer text-sm font-medium">Paying them yourself instead?</summary>
+                  <div className="mt-3">
+                    <SendMoney
+                      amount={billAmount}
+                      memo={`${names[winner]} got spun — bill`}
+                      onDone={() => setWinner(undefined)}
+                    />
+                  </div>
+                </details>
               )}
               <Button variant="ghost" className="w-full" disabled={tx.busy} onClick={() => { setWinner(undefined); setTimeout(spin, 250); }}>
                 <RotateCcw className="size-4" /> Spin again
