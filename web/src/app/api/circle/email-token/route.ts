@@ -1,4 +1,4 @@
-import { circleAvailable, circleFetch } from "@/lib/circle-server";
+import { circleAvailable, circleFetch, idempotencyKey } from "@/lib/circle-server";
 
 type EmailToken = { deviceToken: string; deviceEncryptionKey: string; otpToken: string };
 
@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     const data = await circleFetch<EmailToken>({
       path: "/users/email/token",
       method: "POST",
-      body: { deviceId, email },
+      body: { idempotencyKey: idempotencyKey(), deviceId, email },
     });
     return Response.json(data);
   } catch (err) {

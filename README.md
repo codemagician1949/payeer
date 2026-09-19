@@ -130,9 +130,15 @@ account at all — including **Add money**, which uses Circle's public CCTP cont
 attestation service, neither of which is authenticated.
 
 Circle issues testnet keys free; mainnet is a separate onboarding step in their console
-("Access Mainnet"), and wallet pricing has a free tier for the first monthly active wallets.
-Without a mainnet key the app simply doesn't offer email sign-in, and wallet sign-in covers
-everyone.
+("Access Mainnet"). Wallets are free for the first 1,000 active wallets a month. Without a mainnet
+key the app simply doesn't offer email sign-in, and wallet sign-in covers everyone.
+
+Email sign-in also needs an **SMTP provider**: Circle sends the one-time code through credentials
+you supply, rather than from its own servers. In the Circle console under
+**Wallets → User Controlled → Configurator → Authentication Methods → Email**, set a From address
+and the SMTP host, port, username and password. Mailtrap's sandbox is fine for testing — the codes
+land in Mailtrap's inbox rather than a real one — but delivering to other people's inboxes needs a
+verified sending domain.
 
 ## Trying email sign-in
 
