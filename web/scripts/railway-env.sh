@@ -37,7 +37,9 @@ case "$target" in
       "CIRCLE_API_KEY=$(read_var CIRCLE_API_KEY)" \
       "RESOLVER_PRIVATE_KEY=$(read_var RESOLVER_PRIVATE_KEY)" \
       "GROQ_API_KEY=$(read_var GROQ_API_KEY)" \
-      "GROQ_MODEL=$(read_var GROQ_MODEL)"
+      "GROQ_MODEL=$(read_var GROQ_MODEL)" \
+      "GROQ_SEARCH_MODEL=$(read_var GROQ_SEARCH_MODEL)" \
+      "ANTHROPIC_API_KEY=$(read_var ANTHROPIC_API_KEY)"
     echo "Set for the app. NEXT_PUBLIC_* are baked in at build time, so redeploy: railway up"
     ;;
   chat)
