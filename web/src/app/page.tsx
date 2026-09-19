@@ -16,7 +16,8 @@ import {
 } from "@/components/shadcn/card";
 import { useUsdcBalance } from "@/hooks/use-usdc";
 import { useMyRequests } from "@/hooks/use-payeer";
-import { formatUsdc } from "@/lib/format";
+import { chain, isLocal } from "@/lib/config";
+import { cn, formatUsdc } from "@/lib/format";
 
 const actions = [
   { href: "/request", title: "Request", body: "Share a link, get paid", icon: Link2 },
@@ -122,6 +123,9 @@ function Dashboard({ address }: { address: `0x${string}` }) {
 }
 
 function Landing() {
+  const isMainnet = !chain.testnet && !isLocal;
+  const networkLabel = isMainnet ? "Live on Arc mainnet" : isLocal ? "Running on a local chain" : "Running on Arc testnet";
+
   return (
     <div className="flex flex-col items-center pt-4 text-center sm:pt-12">
       <motion.div
@@ -130,10 +134,10 @@ function Landing() {
         className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-surface/70 px-3 py-1.5 text-xs font-medium text-muted backdrop-blur"
       >
         <span className="relative flex size-1.5">
-          <span className="absolute inline-flex size-full animate-ping rounded-full bg-success opacity-75" />
-          <span className="relative inline-flex size-1.5 rounded-full bg-success" />
+          <span className={cn("absolute inline-flex size-full animate-ping rounded-full opacity-75", isMainnet ? "bg-success" : "bg-warn")} />
+          <span className={cn("relative inline-flex size-1.5 rounded-full", isMainnet ? "bg-success" : "bg-warn")} />
         </span>
-        Live on Arc mainnet
+        {networkLabel}
       </motion.div>
 
       <motion.h1
