@@ -55,9 +55,10 @@ export function RequireWallet({ title, body, children }: { title: string; body: 
           <ConnectButton size="lg" label="Connect to continue" />
         </div>
 
-        {circle.wrongNetwork && (
+        {circle.wrongNetwork && process.env.NODE_ENV === "development" && (
+          // Developer-facing only: users should never be told to run a command.
           <p className="mt-3 text-xs text-muted">
-            Email sign-in is set up, but this Circle key covers a different network. Run{" "}
+            Email sign-in is configured, but this Circle key covers a different network. Run{" "}
             <code className="font-mono text-fg">pnpm dev:testnet</code> to try it, or add a live key.
           </p>
         )}

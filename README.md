@@ -123,6 +123,17 @@ Payeer's own contracts, and only `approve` on USDC.
 
 Arc mainnet is chain 5042 (`https://rpc.mainnet.arc.io`), testnet is 5042002 (`https://rpc.testnet.arc.io`, funded from [faucet.circle.com](https://faucet.circle.com)). USDC is at `0x3600000000000000000000000000000000000000` on both, with 6 decimals through its token interface.
 
+## What needs a Circle account, and what doesn't
+
+Only email sign-in needs a Circle API key. Everything else runs on Arc mainnet with no Circle
+account at all — including **Add money**, which uses Circle's public CCTP contracts and their
+attestation service, neither of which is authenticated.
+
+Circle issues testnet keys free; mainnet is a separate onboarding step in their console
+("Access Mainnet"), and wallet pricing has a free tier for the first monthly active wallets.
+Without a mainnet key the app simply doesn't offer email sign-in, and wallet sign-in covers
+everyone.
+
 ## Trying email sign-in
 
 A Circle key is scoped to one side of the network divide, so email sign-in only appears where the
