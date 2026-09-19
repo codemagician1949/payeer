@@ -4,8 +4,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { Divide, Link2, Plus, QrCode, RotateCcw, Shuffle, Volume2, VolumeX, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { useConnection } from "wagmi";
-import { ConnectButton } from "@/components/connect";
+import { RequireWallet } from "@/components/require-wallet";
 import { Sheet } from "@/components/sheet";
 import { ShareLink } from "@/components/share-link";
 import { AmountInput, Avatar, Button, Card, Input, PageHeader } from "@/components/ui";
@@ -54,8 +53,18 @@ function useTick(enabled: boolean) {
 }
 
 export default function SpinPage() {
+  return (
+    <RequireWallet
+      title="Who pays?"
+      body="Connect first so the wheel can turn its result straight into a payment link. Guests you invite to a room don't need one."
+    >
+      <Spinner />
+    </RequireWallet>
+  );
+}
+
+function Spinner() {
   const router = useRouter();
-  const { isConnected } = useConnection();
   const wheel = useRef<WheelHandle>(null);
   const [names, setNames] = useState<string[]>([]);
   const [draft, setDraft] = useState("");
@@ -214,20 +223,14 @@ export default function SpinPage() {
 
             <div className="mt-6 space-y-2">
               {billAmount ? (
-                isConnected ? (
-                  <>
-                    <Button size="lg" loading={tx.busy} onClick={() => createLink("loser").catch(() => {})}>
-                      <Link2 className="size-4" /> Request ${formatUsdc(billAmount)} from {names[winner]}
-                    </Button>
-                    <Button variant="secondary" className="w-full" disabled={tx.busy} onClick={() => createLink("split").catch(() => {})}>
-                      <Divide className="size-4" /> Split evenly instead (${formatUsdc(share)} each)
-                    </Button>
-                  </>
-                ) : (
-                  <div className="flex justify-center">
-                    <ConnectButton size="lg" label="Connect to request payment" />
-                  </div>
-                )
+                <>
+                  <Button size="lg" loading={tx.busy} onClick={() => createLink("loser").catch(() => {})}>
+                    <Link2 className="size-4" /> Request ${formatUsdc(billAmount)} from {names[winner]}
+                  </Button>
+                  <Button variant="secondary" className="w-full" disabled={tx.busy} onClick={() => createLink("split").catch(() => {})}>
+                    <Divide className="size-4" /> Split evenly instead (${formatUsdc(share)} each)
+                  </Button>
+                </>
               ) : (
                 <p className="text-sm text-muted">Add the bill total to turn this into a payment link.</p>
               )}

@@ -42,7 +42,14 @@ async function newPage({ key } = {}) {
   const page = await context.newPage();
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  page.on("console", (m) => m.type() === "error" && !m.text().includes("_next/hmr") && errors.push(m.text()));
+  // Ignore dev-server hot-reload chatter and third-party wallet telemetry; keep our own errors.
+  const noise = /_next\/hmr|rpc\.walletconnect\.org|pulse\.walletconnect|api\.web3modal\.org/;
+  page.on("console", (m) => {
+    if (m.type() !== "error") return;
+    const where = m.location()?.url ?? "";
+    if (noise.test(m.text()) || noise.test(where)) return;
+    errors.push(`${m.text()}${where ? ` (${where.slice(0, 80)})` : ""}`);
+  });
   if (key) await installWallet(page, key);
   return { page, context, errors };
 }
@@ -79,24 +86,23 @@ console.log("Public pages");
     await page.keyboard.press("Escape");
   });
 
-  await check("spinner picks someone and offers a payment link", async () => {
-    await page.goto(`${base}/spin`, { waitUntil: "load" });
-    for (const name of ["Ada", "Grace", "Linus"]) {
-      await page.fill('input[placeholder="Add a name"]', name);
-      await page.keyboard.press("Enter");
+  await check("request and spin ask for a wallet before showing their form", async () => {
+    for (const path of ["/request", "/spin"]) {
+      await page.goto(base + path, { waitUntil: "load" });
+      await page.waitForTimeout(2000);
+      const body = await page.locator("body").innerText();
+      assert(/Connect to continue/.test(body), `${path} did not ask for a wallet`);
+      assert(!/Add a name|What's it for\?/.test(body), `${path} showed its form to a signed-out visitor`);
+      assert(/never holds your money/.test(body), `${path} is missing the reassurances`);
     }
-    await page.waitForTimeout(300);
-    await page.getByRole("button", { name: /spin the wheel/i }).click();
-    await page.waitForTimeout(7000);
-    const heading = await page.getByText(/pays!/).first().textContent();
-    assert(/Ada|Grace|Linus/.test(heading), `unexpected winner text: ${heading}`);
   });
 
-  await check("request form validates before it lets you submit", async () => {
-    await page.goto(`${base}/request`, { waitUntil: "load" });
-    await page.waitForTimeout(1500);
-    const button = page.getByRole("button", { name: /create link|connect to create/i }).first();
-    assert(await button.isVisible(), "create button missing");
+  await check("a guest can still join a spinner room without a wallet", async () => {
+    await page.goto(`${base}/spin/GUEST1`, { waitUntil: "load" });
+    await page.waitForTimeout(2000);
+    const body = await page.locator("body").innerText();
+    assert(/Join the room/.test(body), "guests are blocked from rooms");
+    assert(/No wallet needed/.test(body), "missing the no-wallet reassurance");
   });
 
   await check("add money page lists source chains and quotes a fee", async () => {
@@ -170,7 +176,24 @@ console.log("\nConnected wallet");
     assert(/0x[0-9a-fA-F]{4}…/.test(body), "connected address not shown in the header");
   });
 
+  await check("the spinner works once connected", async () => {
+    await page.goto(`${base}/spin`, { waitUntil: "load" });
+    await page.waitForTimeout(2500);
+    for (const person of ["Ada", "Grace", "Linus"]) {
+      await page.fill('input[placeholder="Add a name"]', person);
+      await page.keyboard.press("Enter");
+    }
+    await page.waitForTimeout(400);
+    await page.getByRole("button", { name: /spin the wheel/i }).click();
+    await page.waitForTimeout(8000);
+    const heading = await page.getByText(/pays!/).first().textContent();
+    assert(/Ada|Grace|Linus/.test(heading), `unexpected winner text: ${heading}`);
+    await page.keyboard.press("Escape");
+  });
+
   await check("dashboard shows the wallet's real Arc balance", async () => {
+    await page.goto(base, { waitUntil: "load" });
+    await page.waitForTimeout(3000);
     const balance = await page.getByText(/^\$\d+\.\d{2}$/).first().textContent();
     assert(Number(balance.replace("$", "")) > 0, `balance looks wrong: ${balance}`);
   });
@@ -207,7 +230,7 @@ console.log("\nConnected wallet");
   }
 
   await check("no console errors while connected", async () => {
-    assert(errors.filter((e) => !/analytics|coinbase|walletconnect/i.test(e)).length === 0, `errors: ${errors.slice(0, 2).join(" | ")}`);
+    assert(errors.length === 0, `errors: ${errors.slice(0, 2).join(" | ")}`);
   });
 
   await context.close();

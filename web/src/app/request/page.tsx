@@ -4,8 +4,7 @@ import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
 import { CheckCircle2, Users } from "lucide-react";
 import { useState } from "react";
-import { useConnection } from "wagmi";
-import { ConnectButton } from "@/components/connect";
+import { RequireWallet } from "@/components/require-wallet";
 import { ShareLink } from "@/components/share-link";
 import { AmountInput, Button, Card, Field, Input, PageHeader, Segmented } from "@/components/ui";
 import { useTx } from "@/hooks/use-tx";
@@ -19,7 +18,17 @@ type Expiry = "never" | "1d" | "7d" | "30d";
 const expirySeconds: Record<Expiry, number> = { never: 0, "1d": 86400, "7d": 604800, "30d": 2592000 };
 
 export default function RequestPage() {
-  const { isConnected } = useConnection();
+  return (
+    <RequireWallet
+      title="Request money"
+      body="Connect first, so the money has somewhere to land. It only takes a moment."
+    >
+      <RequestForm />
+    </RequireWallet>
+  );
+}
+
+function RequestForm() {
   const tx = useTx();
   const [kind, setKind] = useState<Kind>("fixed");
   const [amount, setAmount] = useState("");
@@ -126,15 +135,9 @@ export default function RequestPage() {
           </label>
         )}
 
-        {isConnected ? (
-          <Button size="lg" disabled={!valid} loading={tx.busy} onClick={() => create().catch(() => {})}>
-            {tx.step === "confirming" ? "Creating…" : "Create link"}
-          </Button>
-        ) : (
-          <div className="flex justify-center">
-            <ConnectButton size="lg" label="Connect to create" />
-          </div>
-        )}
+        <Button size="lg" disabled={!valid} loading={tx.busy} onClick={() => create().catch(() => {})}>
+          {tx.step === "confirming" ? "Creating…" : "Create link"}
+        </Button>
       </Card>
     </div>
   );

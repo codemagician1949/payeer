@@ -19,6 +19,8 @@ Funds can never get stuck: if nothing is settled by the deadline, everyone can r
 
 **Batch payouts** — Pay up to 50 people in one transaction. Paste addresses and amounts straight from a spreadsheet.
 
+**Sign-in** — Reown AppKit handles wallets: 550+ of them, a WalletConnect QR for phones, and network switching. Screens that create something on-chain ask for a wallet up front rather than letting someone fill in a form and hit a wall. Guests joining a spinner room need no wallet at all.
+
 **Spinner rooms** — Start a room, everyone scans the QR code and joins by name (no wallet needed). One wheel, synchronised: the server picks the winner so every phone lands on the same person, with a shared chat and a shared bill total. Whoever ends up paying can turn it into a payment link on the spot.
 
 **Group chat** — Everyone in a pact gets a live chat, over WebSockets. Membership is checked on-chain, so only people who actually staked can read or post, and they prove who they are by signing a message (free, moves no money). Start a line with `/ask` and an AI helper answers questions about how any of it works.
@@ -86,6 +88,14 @@ RESOLVER=0xYourResolverAddress \
 ```
 
 `RESOLVER` is the address allowed to propose AI-checked results. Use a dedicated key holding only a little USDC for gas; put the same key in the web app's `RESOLVER_PRIVATE_KEY`, alongside a result-checker key (`ANTHROPIC_API_KEY`, or `GROQ_API_KEY` with `GROQ_SEARCH_MODEL`). Leave them unset and AI-settled pacts aren't offered at all — the option is disabled in the UI rather than failing later.
+
+Email and social sign-in are a toggle on the Reown project (cloud.reown.com → your project →
+AppKit → enable Email/Socials). The app asks Reown which methods are on and only advertises those,
+so it never offers a sign-in that isn't available.
+
+Circle's MPC (user-controlled) wallets are supported by Arc but need a Circle key with
+Programmable Wallets enabled for **mainnet**: a `TEST_API_KEY` is refused on mainnet by Circle,
+and a live key without the entitlement returns `Forbidden`.
 
 Arc mainnet is chain 5042 (`https://rpc.mainnet.arc.io`), testnet is 5042002 (`https://rpc.testnet.arc.io`, funded from [faucet.circle.com](https://faucet.circle.com)). USDC is at `0x3600000000000000000000000000000000000000` on both, with 6 decimals through its token interface.
 
