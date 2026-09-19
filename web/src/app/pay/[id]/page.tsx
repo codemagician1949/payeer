@@ -3,15 +3,15 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { motion } from "motion/react";
-import { CheckCircle2, Clock, ExternalLink, Share2, XCircle } from "lucide-react";
-import { useState } from "react";
+import { CheckCircle2, Clock, ExternalLink, Plus, Share2, XCircle } from "lucide-react";
+import { useState, type ReactNode } from "react";
 import { useActiveAccount } from "@/hooks/use-account";
 import { ConnectButton } from "@/components/connect";
 import { Logo } from "@/components/shell";
 import { Sheet } from "@/components/sheet";
 import { ShareLink } from "@/components/share-link";
 import { AmountInput, Avatar, Badge, Button, Card, Skeleton } from "@/components/ui";
-import { useRequest } from "@/hooks/use-payeer";
+import { useRequest, type RequestStatus } from "@/hooks/use-payeer";
 import { useTx } from "@/hooks/use-tx";
 import { useUsdcBalance } from "@/hooks/use-usdc";
 import { payeerAbi } from "@/lib/abi";
@@ -129,6 +129,8 @@ export default function PayPage() {
       </div>
 
       <div className="mt-8 space-y-3">
+        {req.status !== "open" && <Closed status={req.status} isCreator={isCreator} />}
+
         {isCreator ? (
           <>
             {req.status === "open" && (
@@ -139,6 +141,9 @@ export default function PayPage() {
                 <Button variant="ghost" className="w-full" loading={tx.busy} onClick={() => cancel().catch(() => {})}>
                   Cancel request
                 </Button>
+                <p className="text-xs text-muted">
+                  Nothing is held here: money only moves when someone pays. Cancelling just closes the link.
+                </p>
               </>
             )}
           </>
@@ -170,6 +175,63 @@ export default function PayPage() {
         <ShareLink url={typeof window === "undefined" ? "" : payUrl(req.id)} title="Payeer request" text={req.memo || "Pay me on Payeer"} />
       </Sheet>
     </Frame>
+  );
+}
+
+/**
+ * What a closed request means, and where to go next. A request is an invoice rather than an
+ * escrow: nothing is held, so cancelling or expiring costs nobody anything.
+ */
+function Closed({ status, isCreator }: { status: RequestStatus; isCreator: boolean }) {
+  const lines: Record<string, { body: string; action: ReactNode }> = {
+    cancelled: {
+      body: isCreator
+        ? "You closed this link, so it can't be paid any more. No money moved — a request only collects when someone pays it."
+        : "Whoever sent this link closed it, so it can't be paid. You haven't been charged.",
+      action: isCreator ? <NextSteps /> : <StartYourOwn />,
+    },
+    expired: {
+      body: isCreator
+        ? "This link has passed its expiry date. Nothing was collected, and nothing was held."
+        : "This link expired before it was paid. You haven't been charged.",
+      action: isCreator ? <NextSteps /> : <StartYourOwn />,
+    },
+    paid: {
+      body: isCreator ? "Paid in full and settled on Arc. The money is in your wallet." : "This one's already been paid.",
+      action: isCreator ? <NextSteps /> : <StartYourOwn />,
+    },
+    missing: { body: "", action: null },
+  };
+
+  const line = lines[status];
+  if (!line?.body) return null;
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted">{line.body}</p>
+      {line.action}
+    </div>
+  );
+}
+
+function NextSteps() {
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      <Link href="/request" className="bg-brand flex h-11 items-center justify-center gap-2 rounded-full text-sm font-medium text-accent-fg">
+        <Plus className="size-4" /> New request
+      </Link>
+      <Link href="/activity" className="flex h-11 items-center justify-center rounded-full bg-surface-2 text-sm font-medium">
+        Your activity
+      </Link>
+    </div>
+  );
+}
+
+function StartYourOwn() {
+  return (
+    <Link href="/" className="flex h-11 items-center justify-center rounded-full bg-surface-2 text-sm font-medium">
+      Get your own Payeer link
+    </Link>
   );
 }
 

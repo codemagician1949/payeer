@@ -8,6 +8,10 @@ Arc pays gas in USDC, so people only ever hold one asset. No second token to buy
 
 **Payment links** — Create a request for a fixed or open amount, with an optional note and expiry, and share it as a link or QR code. Whoever opens it pays in one tap. Optionally let several people pay the same link, which is how a split bill works.
 
+A request is an invoice, not an escrow: nothing is held anywhere, and USDC moves straight from the
+payer's wallet to the creator's when it's paid. Cancelling or expiring a link costs nobody anything,
+and the app says so on screen rather than leaving a dead end. Escrow is what **Pacts** are for.
+
 **Bill spinner** — Add everyone at the table, spin the wheel, and the person it lands on pays. The result turns straight into a payment link for them, or an even split for the group. The wheel uses the browser's cryptographic random number generator, with rejection sampling so no slice is favoured.
 
 **Pacts** — Group escrow. Everyone stakes the same amount on one of up to eight outcomes; backers of the winning outcome split the pot. Two ways to settle:
