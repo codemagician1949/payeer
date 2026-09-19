@@ -3,6 +3,7 @@
 import { AnimatePresence, motion } from "motion/react";
 import { Divide, Link2, Plus, QrCode, RotateCcw, Shuffle, Volume2, VolumeX, X } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { useConfig } from "wagmi";
 import { useActiveAccount } from "@/hooks/use-account";
 import { useEffect, useRef, useState } from "react";
@@ -11,8 +12,10 @@ import { Sheet } from "@/components/sheet";
 import { SendMoney } from "@/components/send-money";
 import { ShareLink } from "@/components/share-link";
 import { AmountInput, Avatar, Button, Card, Input, PageHeader } from "@/components/ui";
-import { secureRandomIndex, Wheel, type WheelHandle } from "@/components/wheel";
+import { Wheel, type WheelHandle } from "@/components/wheel";
+import { FairnessNote } from "@/components/fairness-note";
 import { newRoomCode } from "@/hooks/use-spin-room";
+import { drawWinner, pickFutureRound, type Draw } from "@/lib/fairness";
 import { useTx } from "@/hooks/use-tx";
 import { payeerAbi } from "@/lib/abi";
 import { PAYEER } from "@/lib/config";
@@ -25,6 +28,14 @@ const STORAGE_KEY = "payeer:spin-names";
 
 function weekFromNow() {
   return Math.floor(Date.now() / 1000) + 7 * 86400;
+}
+
+function secureRandomIndex(max: number) {
+  const buf = new Uint32Array(1);
+  const limit = Math.floor(0x1_0000_0000 / max) * max;
+  do crypto.getRandomValues(buf);
+  while (buf[0] >= limit);
+  return buf[0] % max;
 }
 
 function shuffle<T>(xs: T[]) {
@@ -76,6 +87,7 @@ function Spinner() {
   const [bill, setBill] = useState("");
   const [spinning, setSpinning] = useState(false);
   const [winner, setWinner] = useState<number>();
+  const [draw, setDraw] = useState<Draw>();
   const [sound, setSound] = useState(true);
   const [link, setLink] = useState<{ id: bigint; label: string }>();
   const tick = useTick(sound);
@@ -106,13 +118,25 @@ function Spinner() {
   async function spin() {
     if (names.length < 2 || spinning) return;
     setWinner(undefined);
+    setDraw(undefined);
     setSpinning(true);
-    const idx = secureRandomIndex(names.length);
-    await wheel.current?.spin(idx);
-    setSpinning(false);
-    setWinner(idx);
-    navigator.vibrate?.(80);
-    celebrate();
+    wheel.current?.start();
+    try {
+      // The result comes from a public beacon round that hasn't happened yet, so nobody —
+      // not even this device — can know the winner when the wheel starts turning.
+      const round = await pickFutureRound();
+      const result = await drawWinner(round, "solo", names);
+      await wheel.current?.land(result.winner);
+      setDraw(result);
+      setWinner(result.winner);
+      navigator.vibrate?.(80);
+      celebrate();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "The spin couldn't finish.");
+      await wheel.current?.land(0).catch(() => {});
+    } finally {
+      setSpinning(false);
+    }
   }
 
   const billAmount = parseUsdc(bill);
@@ -150,7 +174,7 @@ function Spinner() {
         </div>
         <div className="mx-auto mt-4 max-w-[380px] space-y-2">
           <Button size="lg" onClick={spin} disabled={names.length < 2} loading={spinning} className="h-16 text-lg">
-            {spinning ? "Spinning…" : names.length < 2 ? "Add at least 2 names" : "Spin the wheel"}
+            {spinning ? "Waiting for the randomness beacon…" : names.length < 2 ? "Add at least 2 names" : "Spin the wheel"}
           </Button>
           <Button variant="secondary" className="w-full" onClick={() => router.push(`/spin/${newRoomCode()}`)}>
             <QrCode className="size-4" /> Everyone on their own phone
@@ -226,6 +250,7 @@ function Spinner() {
             </motion.div>
             <p className="mt-4 text-3xl font-semibold">{names[winner]} pays!</p>
             {billAmount && <p className="tabular mt-1 text-muted">${formatUsdc(billAmount)} bill</p>}
+            {draw && <FairnessNote draw={draw} />}
 
             <div className="mt-6 space-y-2">
               {billAmount ? (

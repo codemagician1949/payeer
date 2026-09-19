@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ChatMessage } from "./use-chat";
+import { pickFutureRound } from "@/lib/fairness";
 
 const CHAT_URL = process.env.NEXT_PUBLIC_CHAT_URL;
 
-export type SpinEvent = { winner: number; name: string; by: string; at: number };
+export type SpinEvent = { round: number; names: string[]; by: string; at: number };
 type Status = "idle" | "connecting" | "ready" | "error";
 
 /**
@@ -50,7 +51,7 @@ export function useSpinRoom(code: string | undefined, name: string | undefined) 
         setHost(data.host);
         setAddresses(data.addresses ?? {});
       } else if (data.type === "spin") {
-        setSpin({ winner: data.winner, name: data.name, by: data.by, at: Date.now() });
+        setSpin({ round: data.round, names: data.names ?? [], by: data.by, at: Date.now() });
       } else if (data.type === "msg") {
         setAssistantTyping(false);
         setMessages((xs) => (xs.some((m) => m.id === data.message.id) ? xs : [...xs, data.message]));
@@ -86,8 +87,10 @@ export function useSpinRoom(code: string | undefined, name: string | undefined) 
     socket.current?.send(JSON.stringify({ type: "room", ...update }));
   }, []);
 
-  const requestSpin = useCallback(() => {
-    socket.current?.send(JSON.stringify({ type: "spin" }));
+  /** The round is chosen from the public beacon's clock, and every client checks it's still ahead. */
+  const requestSpin = useCallback(async () => {
+    const round = await pickFutureRound();
+    socket.current?.send(JSON.stringify({ type: "spin", round }));
   }, []);
 
   const sendMessage = useCallback((text: string) => {

@@ -8,7 +8,6 @@
  * Run with: pnpm chat
  */
 import { createServer } from "node:http";
-import { randomInt } from "node:crypto";
 import { WebSocketServer } from "ws";
 import { createPublicClient, http, verifyMessage, getAddress } from "viem";
 import { arc, arcTestnet, foundry } from "viem/chains";
@@ -206,12 +205,14 @@ wss.on("connection", (ws) => {
 
     if (msg.type === "spin" && ws.room?.startsWith("spin:")) {
       const r = room(ws.room);
-      if (!r.names.length) return;
-      // The server picks so every screen lands on the same person. randomInt draws from the
-      // OS entropy pool and rejects biased samples, so each name is equally likely.
-      const winner = randomInt(r.names.length);
-      r.lastSpin = { winner, at: Date.now(), by: ws.address };
-      broadcast(ws.room, { type: "spin", winner, name: r.names[winner], by: ws.address });
+      if (r.names.length < 2) return;
+      // The server does not pick the winner and cannot: it only names a drand round that hasn't
+      // happened yet, along with the list of names. Every client fetches that round, verifies its
+      // signature and works out the winner itself, so this server is not trusted with the result.
+      const round = Number(msg.round);
+      if (!Number.isSafeInteger(round) || round <= 0) return;
+      r.lastSpin = { round, at: Date.now(), by: ws.address, names: [...r.names] };
+      broadcast(ws.room, { type: "spin", round, names: r.names, by: ws.address });
       return;
     }
 

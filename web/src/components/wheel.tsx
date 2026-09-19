@@ -14,7 +14,12 @@ const palette = [
   "oklch(0.74 0.16 195)",
 ];
 
-export type WheelHandle = { spin: (winner: number) => Promise<void> };
+export type WheelHandle = {
+  /** Spins without a destination, while the randomness beacon is still being waited on. */
+  start: () => void;
+  /** Decelerates into the winning slice once the beacon has been verified. */
+  land: (winner: number) => Promise<void>;
+};
 
 /** Cryptographically random integer in [0, max). */
 export function secureRandomIndex(max: number) {
@@ -57,17 +62,30 @@ export const Wheel = forwardRef<WheelHandle, { names: string[]; onTick?: () => v
     }
   });
 
+  const freeSpin = useRef<{ stop: () => void } | null>(null);
+
   useImperativeHandle(ref, () => ({
-    async spin(winner) {
+    start() {
+      freeSpin.current?.stop();
+      // Keep turning at a steady pace until the beacon arrives.
+      const controls = animate(rotation, rotation.get() - 360 * 40, {
+        duration: 40,
+        ease: "linear",
+      });
+      freeSpin.current = controls;
+    },
+    async land(winner) {
+      freeSpin.current?.stop();
+      freeSpin.current = null;
       const seg = 360 / n;
       // Land somewhere inside the winning slice, not dead-centre, so it feels natural.
       const offset = (0.18 + (secureRandomIndex(1000) / 1000) * 0.64) * seg;
       const target = -(winner * seg + offset);
       const current = rotation.get();
       const base = current - (((current % 360) + 360) % 360);
-      const final = base - 360 * (7 + secureRandomIndex(3)) + ((target % 360) + 360) % 360 - 360;
-      // Long, decelerating tail: fast for a second, then a slow creep into the final slice.
-      await animate(rotation, final, { duration: 8.6, ease: [0.08, 0.72, 0.12, 1] });
+      const final = base - 360 * (4 + secureRandomIndex(2)) + ((target % 360) + 360) % 360 - 360;
+      // A long, decelerating tail: it creeps into the final slice rather than snapping to it.
+      await animate(rotation, final, { duration: 6.4, ease: [0.1, 0.62, 0.1, 1] });
     },
   }));
 

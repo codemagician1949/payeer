@@ -189,9 +189,12 @@ console.log("\nConnected wallet");
     }
     await page.waitForTimeout(400);
     await page.getByRole("button", { name: /spin the wheel/i }).click();
-    await page.waitForTimeout(11000);
+    // The wheel turns while it waits for a future beacon round, then lands on the result.
+    await page.waitForSelector("text=/pays!/", { timeout: 90000 });
     const heading = await page.getByText(/pays!/).first().textContent();
     assert(/Ada|Grace|Linus/.test(heading), `unexpected winner text: ${heading}`);
+    const proof = await page.getByText(/drand round/).first().textContent();
+    assert(/#\d{6,}/.test(proof), `no verifiable round shown: ${proof}`);
     await page.keyboard.press("Escape");
   });
 

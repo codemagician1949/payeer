@@ -84,6 +84,14 @@ await check("one spin, and both screens land on the same person", async () => {
   console.log(`      winner: ${named[0] || "(you)"} — Ada saw "${winners[0]}", Grace saw "${winners[1]}"`);
 });
 
+await check("the result is traceable to a public beacon round", async () => {
+  const proof = await ada.page.getByText(/drand round/).first().textContent();
+  assert(/#\d{6,}/.test(proof), `no beacon round shown: ${proof}`);
+  const same = await grace.page.getByText(/drand round/).first().textContent();
+  assert(proof === same, `screens cite different rounds: ${proof} vs ${same}`);
+  console.log(`      ${proof.replace(/\s+/g, " ").slice(0, 80)}`);
+});
+
 await check("the split figure is offered to whoever can pay", async () => {
   const body = await ada.page.locator("body").innerText();
   assert(/Split evenly/.test(body) || /Connect to send a payment link/.test(body), "no payment option after the spin");

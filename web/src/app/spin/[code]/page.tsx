@@ -4,10 +4,12 @@ import { useParams } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { Divide, Link2, MessageCircle, QrCode, RotateCcw, Send, Users, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import { useConfig } from "wagmi";
 import { useActiveAccount } from "@/hooks/use-account";
 import { ConnectButton } from "@/components/connect";
 import { Sheet } from "@/components/sheet";
+import { FairnessNote } from "@/components/fairness-note";
 import { SendMoney } from "@/components/send-money";
 import { ShareLink } from "@/components/share-link";
 import { ScrollArea } from "@/components/shadcn/scroll-area";
@@ -18,6 +20,7 @@ import { useTx } from "@/hooks/use-tx";
 import { payeerAbi } from "@/lib/abi";
 import { PAYEER } from "@/lib/config";
 import { celebrate } from "@/lib/confetti";
+import { drawWinner, isFutureRound, type Draw } from "@/lib/fairness";
 import { cn, formatUsdc, parseUsdc } from "@/lib/format";
 import { countRequests, newRequestId, payUrl } from "@/lib/requests";
 
@@ -86,26 +89,37 @@ function Room({ code, name }: { code: string; name: string }) {
   const tx = useTx();
   const [spinning, setSpinning] = useState(false);
   const [result, setResult] = useState<string>();
+  const [draw, setDraw] = useState<Draw>();
   const [draft, setDraft] = useState("");
   const [inviteOpen, setInviteOpen] = useState(false);
   const [link, setLink] = useState<{ id: bigint; label: string }>();
   const bottom = useRef<HTMLDivElement>(null);
   const lastSpinAt = useRef(0);
 
-  // Everyone's wheel animates to the winner the server picked.
+  // Every screen works out the winner itself from the announced beacon round, so all of them
+  // agree without trusting the server — and the server can't know the answer in advance either.
   useEffect(() => {
-    if (!room.spin || room.spin.at === lastSpinAt.current) return;
-    lastSpinAt.current = room.spin.at;
-    const winner = room.spin.name;
-    setSpinning(true);
+    const event = room.spin;
+    if (!event || event.at === lastSpinAt.current) return;
+    lastSpinAt.current = event.at;
     setResult(undefined);
-    wheel.current?.spin(room.spin.winner).then(() => {
-      setSpinning(false);
-      setResult(winner);
+    setDraw(undefined);
+    setSpinning(true);
+    wheel.current?.start();
+
+    (async () => {
+      // Refuse a round that has already happened: that's how a tampered server would cheat.
+      if (!(await isFutureRound(event.round))) throw new Error("That spin used an old round, so it was ignored.");
+      const outcome = await drawWinner(event.round, `spin:${code}`, event.names);
+      await wheel.current?.land(outcome.winner);
+      setDraw(outcome);
+      setResult(event.names[outcome.winner]);
       navigator.vibrate?.(80);
       celebrate();
-    });
-  }, [room.spin]);
+    })()
+      .catch((err) => toast.error(err instanceof Error ? err.message : "The spin couldn't finish."))
+      .finally(() => setSpinning(false));
+  }, [room.spin, code]);
 
   useEffect(() => {
     bottom.current?.scrollIntoView({ behavior: "smooth" });
@@ -166,9 +180,11 @@ function Room({ code, name }: { code: string; name: string }) {
 
         <div className="mx-auto mt-4 max-w-[380px] space-y-2">
           <Button size="lg" className="h-16 text-lg" disabled={room.names.length < 2 || spinning} loading={spinning} onClick={room.requestSpin}>
-            {spinning ? "Spinning…" : room.names.length < 2 ? "Waiting for one more person" : "Spin for everyone"}
+            {spinning ? "Waiting for the randomness beacon…" : room.names.length < 2 ? "Waiting for one more person" : "Spin for everyone"}
           </Button>
-          <p className="text-center text-xs text-muted">Anyone can spin. Every screen lands on the same person.</p>
+          <p className="text-center text-xs text-muted">
+            Anyone can spin. The result comes from a public randomness beacon, so no one here — or running this app — can rig it.
+          </p>
         </div>
       </div>
 
@@ -244,6 +260,7 @@ function Room({ code, name }: { code: string; name: string }) {
             </motion.div>
             <p className="mt-4 text-3xl font-semibold">{result === name ? "You pay!" : `${result} pays!`}</p>
             {billAmount && <p className="tabular mt-1 text-muted">${formatUsdc(billAmount)} bill</p>}
+            {draw && <FairnessNote draw={draw} />}
             <div className="mt-6 space-y-2">
               {billAmount && result === name && payTo ? (
                 <>

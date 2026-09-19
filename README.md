@@ -27,11 +27,22 @@ third-party stands in for a Circle service.
 
 **Spinner rooms** — Start a room, everyone scans the QR code and joins by name (no wallet needed). One wheel, synchronised: the server picks the winner so every phone lands on the same person, with a shared chat and a shared bill total. When the wheel lands on you, you can **pay the person who fronted the bill in one tap**, because anyone signed in shares where to pay them; otherwise the result becomes a payment link.
 
-Both wheels draw from a cryptographic generator with rejection sampling, so every name is exactly
-as likely as every other: `crypto.getRandomValues` in the browser for a solo spin, `crypto.randomInt`
-on the server for a room. Plain modulo arithmetic on a random number quietly favours lower indices;
-rejection sampling discards the biased tail instead. It is not, however, verifiable randomness — a
-host who controlled the server could rig a room spin. Commit-reveal would fix that if it ever matters.
+**Nobody can rig the wheel — including whoever runs Payeer.** The result comes from
+[drand](https://drand.love)'s `quicknet` beacon, a public randomness service where a threshold of
+independent organisations jointly sign a new value every three seconds. A spin names a round that
+*hasn't happened yet*, so the outcome cannot be known when the wheel starts turning. When the round
+arrives, every device fetches it, verifies its BLS signature against quicknet's pinned public key,
+and derives the winner itself:
+
+```
+winner = keccak256(randomness ‖ room ‖ names) mod count
+```
+
+The server never picks a winner; it only relays which round a spin is waiting for, and clients
+**reject a round whose time has already passed**, which is what would let a tampered server replay
+a beacon it already knew. Each result shows its round number and links to the beacon, so anyone at
+the table can check it. `e2e/fairness-check.mjs` verifies the derivation is deterministic and
+uniform (chi-square over 120,000 draws).
 
 **Group chat** — Everyone in a pact gets a live chat, over WebSockets. Membership is checked on-chain, so only people who actually staked can read or post, and they prove who they are by signing a message (free, moves no money). Start a line with `/ask` and an AI helper answers questions about how any of it works.
 
