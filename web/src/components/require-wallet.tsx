@@ -4,22 +4,24 @@ import { motion } from "motion/react";
 import { Mail, ShieldCheck, Wallet, Zap } from "lucide-react";
 import type { ReactNode } from "react";
 import { useConnection } from "wagmi";
+import { useActiveAccount } from "@/hooks/use-account";
 import { ConnectButton } from "./connect";
+import { useCircle } from "./circle-provider";
 import { Card, Skeleton } from "./ui";
-import { useSignInOptions } from "@/hooks/use-signin-options";
 
 /**
  * Screens that create something on-chain ask for a wallet up front, so nobody fills in a form
  * only to hit a wall at the end.
  */
 export function RequireWallet({ title, body, children }: { title: string; body: string; children: ReactNode }) {
-  const { isConnected, isConnecting, isReconnecting } = useConnection();
-  const signIn = useSignInOptions();
+  const { isConnected } = useActiveAccount();
+  const { isConnecting, isReconnecting } = useConnection();
+  const circle = useCircle();
 
   const reassurances = [
     { icon: ShieldCheck, text: "Payeer never holds your money" },
     { icon: Zap, text: "Fees are about $0.003, paid in USDC" },
-    signIn?.email
+    circle.available
       ? { icon: Mail, text: "No wallet? Sign in with your email address" }
       : { icon: Wallet, text: "Hundreds of wallets, or scan a QR from your phone" },
   ];

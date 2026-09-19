@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Bot, ChevronRight, Handshake, Plus } from "lucide-react";
-import { useConnection } from "wagmi";
+import { useActiveAccount } from "@/hooks/use-account";
 import { ConnectButton } from "@/components/connect";
 import { StageBadge } from "@/components/pact-bits";
 import { Badge, Card, EmptyState, PageHeader, Skeleton } from "@/components/ui";
@@ -10,7 +10,7 @@ import { useMyPacts } from "@/hooks/use-pacts";
 import { formatUsdc } from "@/lib/format";
 
 export default function PactsPage() {
-  const { address, isConnected } = useConnection();
+  const { address, isConnected } = useActiveAccount();
   const { data, isLoading } = useMyPacts(address);
 
   return (

@@ -47,9 +47,9 @@ export function startAppKit() {
       "--w3m-accent": "#8b7cff",
       "--w3m-border-radius-master": "3px",
     },
-    // Email and social sign-in create a wallet behind the scenes, so someone with no crypto
-    // at all can still be paid. Wallets stay listed for people who already have one.
-    features: { analytics: false, email: true, socials: ["google", "x", "apple", "farcaster"], emailShowWallets: true },
+    // Reown connects existing wallets only. Email sign-in is Circle's, so there is exactly one
+    // email path and Circle holds the keys for it.
+    features: { analytics: false, email: false, socials: false },
   });
 }
 

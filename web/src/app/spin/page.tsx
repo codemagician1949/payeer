@@ -3,6 +3,8 @@
 import { AnimatePresence, motion } from "motion/react";
 import { Divide, Link2, Plus, QrCode, RotateCcw, Shuffle, Volume2, VolumeX, X } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useConfig } from "wagmi";
+import { useActiveAccount } from "@/hooks/use-account";
 import { useEffect, useRef, useState } from "react";
 import { RequireWallet } from "@/components/require-wallet";
 import { Sheet } from "@/components/sheet";
@@ -15,7 +17,7 @@ import { payeerAbi } from "@/lib/abi";
 import { PAYEER } from "@/lib/config";
 import { celebrate } from "@/lib/confetti";
 import { formatUsdc, parseUsdc } from "@/lib/format";
-import { payUrl, requestIdFrom } from "@/lib/requests";
+import { countRequests, newRequestId, payUrl } from "@/lib/requests";
 
 const MAX_NAMES = 12;
 const STORAGE_KEY = "payeer:spin-names";
@@ -65,6 +67,8 @@ export default function SpinPage() {
 
 function Spinner() {
   const router = useRouter();
+  const config = useConfig();
+  const { address } = useActiveAccount();
   const wheel = useRef<WheelHandle>(null);
   const [names, setNames] = useState<string[]>([]);
   const [draft, setDraft] = useState("");
@@ -118,11 +122,12 @@ function Spinner() {
     const who = names[winner];
     const amount = mode === "loser" ? billAmount : share!;
     const memo = mode === "loser" ? `${who} got spun — pays the bill` : `Bill split ${names.length} ways`;
+    const before = await countRequests(config, address!);
     const receipt = await tx.send(
       { address: PAYEER, abi: payeerAbi, functionName: "createRequest", args: [amount, weekFromNow(), mode === "split", memo] },
       { pending: "Creating payment link…", success: "Link ready to share" },
     );
-    setLink({ id: requestIdFrom(receipt), label: mode === "loser" ? `Send this to ${who}` : "Send this to the group" });
+    setLink({ id: await newRequestId(config, receipt, address!, before), label: mode === "loser" ? `Send this to ${who}` : "Send this to the group" });
     setWinner(undefined);
     tx.reset();
   }

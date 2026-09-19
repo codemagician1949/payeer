@@ -1,11 +1,12 @@
 "use client";
 
 import { erc20Abi } from "viem";
-import { useConnection, useReadContract } from "wagmi";
+import { useReadContract } from "wagmi";
+import { useActiveAccount } from "./use-account";
 import { USDC } from "@/lib/config";
 
 export function useUsdcBalance() {
-  const { address } = useConnection();
+  const { address } = useActiveAccount();
   return useReadContract({
     address: USDC,
     abi: erc20Abi,

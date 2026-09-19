@@ -19,7 +19,11 @@ Funds can never get stuck: if nothing is settled by the deadline, everyone can r
 
 **Batch payouts** — Pay up to 50 people in one transaction. Paste addresses and amounts straight from a spreadsheet.
 
-**Sign-in** — Reown AppKit handles wallets: 550+ of them, a WalletConnect QR for phones, and network switching. Screens that create something on-chain ask for a wallet up front rather than letting someone fill in a form and hit a wall. Guests joining a spinner room need no wallet at all.
+**Sign-in, two ways** — Connect an existing wallet through Reown AppKit (550+ wallets, WalletConnect QR for phones), or **sign in with an email address**, which Circle handles end to end: Circle mails the code, verifies it, creates the wallet on Arc and keeps the key shares. Payeer never sees a private key either way. Screens that create something on-chain ask for sign-in up front rather than letting someone fill in a form and hit a wall; guests joining a spinner room need nothing at all.
+
+Everything Circle provides is called through Circle: wallets and email sign-in via their API and
+`@circle-fin/w3s-pw-web-sdk`, cross-chain USDC via CCTP and Circle's attestation service. No
+third-party stands in for a Circle service.
 
 **Spinner rooms** — Start a room, everyone scans the QR code and joins by name (no wallet needed). One wheel, synchronised: the server picks the winner so every phone lands on the same person, with a shared chat and a shared bill total. Whoever ends up paying can turn it into a payment link on the spot.
 
@@ -41,11 +45,13 @@ web/         Next.js 16, Tailwind v4, shadcn/ui, wagmi v3 + viem, Motion.
              server/chat.mjs   the WebSocket server (pact chat + spinner rooms)
              e2e/              browser tests, including a two-browser room test
              lib/cctp.ts       cross-chain USDC transfers into Arc
+             api/circle/*      Circle wallets: email sign-in and PIN-approved transactions
 ```
 
 Some design notes:
 
 - **State lives on-chain, not in a database.** Requests, pact terms, participants and each user's activity feed are all read straight from the contracts, so the app has no backend to keep in sync. Arc RPCs cap `eth_getLogs` ranges at a few thousand blocks (~30 minutes of history at 0.5s blocks), so the activity feed is stored in contract storage rather than reconstructed from events.
+- **One account abstraction.** `useActiveAccount` hides whether someone connected a wallet or signed in by email; `useTx` picks the right path, including the extra USDC approval each needs. A wallet transaction returns logs, so new ids come from the receipt; Circle settles asynchronously, so ids are read back from the creator's own on-chain list instead.
 - **The AI can propose, never pay.** The resolver key can only call `proposeOutcome`. Participants can dispute, and a disputed result falls back to unanimous agreement. A wrong or manipulated answer cannot move anyone's money on its own.
 - **Upgradeable by design.** Both contracts sit behind UUPS proxies with storage gaps, so features can be added later without asking anyone to move to a new address.
 - **Payment links have real link previews.** Sharing one into a chat app shows the amount and note, read live from the chain.
@@ -89,13 +95,14 @@ RESOLVER=0xYourResolverAddress \
 
 `RESOLVER` is the address allowed to propose AI-checked results. Use a dedicated key holding only a little USDC for gas; put the same key in the web app's `RESOLVER_PRIVATE_KEY`, alongside a result-checker key (`ANTHROPIC_API_KEY`, or `GROQ_API_KEY` with `GROQ_SEARCH_MODEL`). Leave them unset and AI-settled pacts aren't offered at all — the option is disabled in the UI rather than failing later.
 
-Email and social sign-in are a toggle on the Reown project (cloud.reown.com → your project →
-AppKit → enable Email/Socials). The app asks Reown which methods are on and only advertises those,
-so it never offers a sign-in that isn't available.
+Email sign-in needs `CIRCLE_API_KEY` and `NEXT_PUBLIC_CIRCLE_APP_ID`. A Circle key is scoped to
+either testnets or mainnets, and the app follows it: with a `TEST_API_KEY` the wallets live on Arc
+testnet, so email sign-in is offered only when the key's network matches the app's. Circle refuses
+mainnet outright with a test key, and a live key without Programmable Wallets returns `Forbidden`.
+`/api/circle/config` reports what's actually usable, and the UI offers only that.
 
-Circle's MPC (user-controlled) wallets are supported by Arc but need a Circle key with
-Programmable Wallets enabled for **mainnet**: a `TEST_API_KEY` is refused on mainnet by Circle,
-and a live key without the entitlement returns `Forbidden`.
+Transactions from a Circle wallet go through `/api/circle/execute`, which will only sign calls to
+Payeer's own contracts, and only `approve` on USDC.
 
 Arc mainnet is chain 5042 (`https://rpc.mainnet.arc.io`), testnet is 5042002 (`https://rpc.testnet.arc.io`, funded from [faucet.circle.com](https://faucet.circle.com)). USDC is at `0x3600000000000000000000000000000000000000` on both, with 6 decimals through its token interface.
 

@@ -5,7 +5,8 @@ import { useParams, useSearchParams } from "next/navigation";
 import { motion } from "motion/react";
 import { Bot, CheckCircle2, ExternalLink, Info, Share2, ShieldAlert, Sparkles, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useConnection, useReadContracts } from "wagmi";
+import { useReadContracts } from "wagmi";
+import { useActiveAccount } from "@/hooks/use-account";
 import { toast } from "sonner";
 import { ChatPanel } from "@/components/chat-panel";
 import { ConnectButton } from "@/components/connect";
@@ -52,7 +53,7 @@ export default function PactPage() {
   const params = useParams<{ id: string }>();
   const search = useSearchParams();
   const id = /^\d+$/.test(params.id) ? BigInt(params.id) : undefined;
-  const { address, isConnected } = useConnection();
+  const { address, isConnected } = useActiveAccount();
   const { data: pact, me, isLoading, refetch } = usePact(id, address);
   const people = usePicksAndVotes(pact);
   const { data: balance } = useUsdcBalance();

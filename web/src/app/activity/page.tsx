@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { ArrowDownLeft, ArrowUpRight, Activity as ActivityIcon, Users } from "lucide-react";
 import { useState } from "react";
-import { useConnection, useReadContract } from "wagmi";
+import { useReadContract } from "wagmi";
+import { useActiveAccount } from "@/hooks/use-account";
 import { ConnectButton } from "@/components/connect";
 import { RequestRow } from "@/components/request-row";
 import { Avatar, Button, Card, EmptyState, PageHeader, Segmented, Skeleton } from "@/components/ui";
@@ -24,7 +25,7 @@ const kinds = {
 } as const;
 
 export default function ActivityPage() {
-  const { address, isConnected } = useConnection();
+  const { address, isConnected } = useActiveAccount();
   const [tab, setTab] = useState<"all" | "requests">("all");
   const [limit, setLimit] = useState(PAGE);
 

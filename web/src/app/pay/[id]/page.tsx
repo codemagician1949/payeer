@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { motion } from "motion/react";
 import { CheckCircle2, Clock, ExternalLink, Share2, XCircle } from "lucide-react";
 import { useState } from "react";
-import { useConnection } from "wagmi";
+import { useActiveAccount } from "@/hooks/use-account";
 import { ConnectButton } from "@/components/connect";
 import { Logo } from "@/components/shell";
 import { Sheet } from "@/components/sheet";
@@ -24,7 +24,7 @@ export default function PayPage() {
   const params = useParams<{ id: string }>();
   const id = /^\d+$/.test(params.id) ? BigInt(params.id) : undefined;
   const { data: req, isLoading, refetch } = useRequest(id);
-  const { address, isConnected } = useConnection();
+  const { address, isConnected } = useActiveAccount();
   const { data: balance } = useUsdcBalance();
   const tx = useTx();
   const [custom, setCustom] = useState("");

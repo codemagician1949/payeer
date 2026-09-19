@@ -4,6 +4,8 @@ import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
 import { CheckCircle2, Users } from "lucide-react";
 import { useState } from "react";
+import { useConfig } from "wagmi";
+import { useActiveAccount } from "@/hooks/use-account";
 import { RequireWallet } from "@/components/require-wallet";
 import { ShareLink } from "@/components/share-link";
 import { AmountInput, Button, Card, Field, Input, PageHeader, Segmented } from "@/components/ui";
@@ -11,7 +13,7 @@ import { useTx } from "@/hooks/use-tx";
 import { payeerAbi } from "@/lib/abi";
 import { PAYEER } from "@/lib/config";
 import { formatUsdc, parseUsdc } from "@/lib/format";
-import { payUrl, requestIdFrom } from "@/lib/requests";
+import { countRequests, newRequestId, payUrl } from "@/lib/requests";
 
 type Kind = "fixed" | "open";
 type Expiry = "never" | "1d" | "7d" | "30d";
@@ -29,6 +31,8 @@ export default function RequestPage() {
 }
 
 function RequestForm() {
+  const config = useConfig();
+  const { address } = useActiveAccount();
   const tx = useTx();
   const [kind, setKind] = useState<Kind>("fixed");
   const [amount, setAmount] = useState("");
@@ -41,6 +45,7 @@ function RequestForm() {
   const valid = kind === "open" || parsed !== undefined;
 
   async function create() {
+    const before = await countRequests(config, address!);
     const expiresAt = expirySeconds[expiry] ? Math.floor(Date.now() / 1000) + expirySeconds[expiry] : 0;
     const value = kind === "fixed" ? parsed! : 0n;
     const receipt = await tx.send(
@@ -52,7 +57,7 @@ function RequestForm() {
       },
       { pending: "Creating your link…", success: "Payment link ready" },
     );
-    setCreated({ id: requestIdFrom(receipt), amount: kind === "fixed" ? value : undefined, memo: memo.trim() });
+    setCreated({ id: await newRequestId(config, receipt, address!, before), amount: kind === "fixed" ? value : undefined, memo: memo.trim() });
   }
 
   if (created) {

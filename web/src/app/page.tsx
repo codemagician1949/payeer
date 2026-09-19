@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { motion } from "motion/react";
 import { ArrowUpRight, Disc3, Handshake, Link2, Plus, Sparkles, Zap, ShieldCheck } from "lucide-react";
-import { useConnection } from "wagmi";
+import { useActiveAccount } from "@/hooks/use-account";
 import { ConnectButton } from "@/components/connect";
 import { FirstRun } from "@/components/first-run";
 import { RequestRow } from "@/components/request-row";
@@ -25,7 +25,7 @@ const actions = [
 ];
 
 export default function HomePage() {
-  const { address, isConnected } = useConnection();
+  const { address, isConnected } = useActiveAccount();
   if (!isConnected || !address) return <Landing />;
   return <Dashboard address={address} />;
 }

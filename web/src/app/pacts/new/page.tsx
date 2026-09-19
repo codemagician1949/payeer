@@ -4,7 +4,8 @@ import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { Bot, Minus, Plus, Trophy, Dumbbell, PenLine, Users, X } from "lucide-react";
 import { useState } from "react";
-import { useConnection } from "wagmi";
+import { useConfig } from "wagmi";
+import { useActiveAccount } from "@/hooks/use-account";
 import { ConnectButton } from "@/components/connect";
 import { AmountInput, Button, Card, Field, Input, PageHeader, Segmented } from "@/components/ui";
 import { useResolverAvailable } from "@/hooks/use-resolver";
@@ -12,7 +13,7 @@ import { useTx } from "@/hooks/use-tx";
 import { pactsAbi } from "@/lib/abi";
 import { PACTS } from "@/lib/config";
 import { cn, formatUsdc, parseUsdc } from "@/lib/format";
-import { pactIdFrom } from "@/lib/requests";
+import { countPacts, newPactId } from "@/lib/requests";
 
 type Template = "match" | "challenge" | "custom";
 
@@ -63,7 +64,8 @@ function toLocalInput(d: Date) {
 
 export default function NewPactPage() {
   const router = useRouter();
-  const { isConnected } = useConnection();
+  const config = useConfig();
+  const { address, isConnected } = useActiveAccount();
   const tx = useTx();
   const [template, setTemplate] = useState<Template>("match");
   const [terms, setTerms] = useState("");
@@ -102,6 +104,7 @@ export default function NewPactPage() {
   ].filter(Boolean) as string[];
 
   async function create() {
+    const before = await countPacts(config, address!);
     // Recompute at submit time: the form may have been open for a while.
     const deadline = nowSeconds() + joinSeconds;
     const receipt = await tx.send(
@@ -125,7 +128,7 @@ export default function NewPactPage() {
       },
       { spend: stakeAmount, pending: "Locking your stake…", success: "Pact created" },
     );
-    router.push(`/pacts/${pactIdFrom(receipt)}?new=1`);
+    router.push(`/pacts/${await newPactId(config, receipt, address!, before)}?new=1`);
   }
 
   return (

@@ -5,6 +5,7 @@ import { useState, type ReactNode } from "react";
 import { Toaster } from "sonner";
 import { WagmiProvider, type State } from "wagmi";
 import { startAppKit, wagmiConfig } from "@/lib/appkit";
+import { CircleProvider } from "./circle-provider";
 
 // Reown's modal is created once, before React renders, so its web components are ready.
 startAppKit();
@@ -17,8 +18,9 @@ export function Providers({ children, initialState }: { children: ReactNode; ini
   return (
     <WagmiProvider config={wagmiConfig} initialState={initialState}>
       <QueryClientProvider client={queryClient}>
-        {children}
-        <Toaster
+        <CircleProvider>
+          {children}
+          <Toaster
           position="top-center"
           toastOptions={{
             classNames: {
@@ -27,7 +29,8 @@ export function Providers({ children, initialState }: { children: ReactNode; ini
               actionButton: "!bg-accent !text-accent-fg !rounded-full",
             },
           }}
-        />
+          />
+        </CircleProvider>
       </QueryClientProvider>
     </WagmiProvider>
   );

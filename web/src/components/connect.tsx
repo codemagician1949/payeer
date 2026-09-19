@@ -3,6 +3,8 @@
 import { useAppKit } from "@reown/appkit/react";
 import { Wallet } from "lucide-react";
 import { useConnection } from "wagmi";
+import { CircleAccount, CircleSignIn } from "./circle-signin";
+import { useCircle } from "./circle-provider";
 import { Avatar, Button } from "./ui";
 import { shortAddress } from "@/lib/format";
 import { useUsdcBalance } from "@/hooks/use-usdc";
@@ -16,6 +18,9 @@ export function ConnectButton({ size = "sm", label = "Connect" }: { size?: "sm" 
   const { open } = useAppKit();
   const { address, isConnected } = useConnection();
   const { data: balance } = useUsdcBalance();
+  const circle = useCircle();
+
+  if (circle.session) return <CircleAccount />;
 
   if (isConnected && address) {
     return (
@@ -31,8 +36,11 @@ export function ConnectButton({ size = "sm", label = "Connect" }: { size?: "sm" 
   }
 
   return (
-    <Button size={size} onClick={() => open({ view: "Connect" })}>
-      <Wallet className="size-4" /> {label}
-    </Button>
+    <div className="flex items-center gap-2">
+      <Button size={size} onClick={() => open({ view: "Connect" })}>
+        <Wallet className="size-4" /> {label}
+      </Button>
+      {size !== "sm" && <CircleSignIn size={size} />}
+    </div>
   );
 }

@@ -4,7 +4,8 @@ import { useParams } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { Divide, Link2, MessageCircle, QrCode, RotateCcw, Send, Users, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { useConnection } from "wagmi";
+import { useConfig } from "wagmi";
+import { useActiveAccount } from "@/hooks/use-account";
 import { ConnectButton } from "@/components/connect";
 import { Sheet } from "@/components/sheet";
 import { ShareLink } from "@/components/share-link";
@@ -17,7 +18,7 @@ import { payeerAbi } from "@/lib/abi";
 import { PAYEER } from "@/lib/config";
 import { celebrate } from "@/lib/confetti";
 import { cn, formatUsdc, parseUsdc } from "@/lib/format";
-import { payUrl, requestIdFrom } from "@/lib/requests";
+import { countRequests, newRequestId, payUrl } from "@/lib/requests";
 
 const NAME_KEY = "payeer:display-name";
 
@@ -78,7 +79,8 @@ export default function SpinRoomPage() {
 
 function Room({ code, name }: { code: string; name: string }) {
   const room = useSpinRoom(code, name);
-  const { isConnected } = useConnection();
+  const config = useConfig();
+  const { address, isConnected } = useActiveAccount();
   const wheel = useRef<WheelHandle>(null);
   const tx = useTx();
   const [spinning, setSpinning] = useState(false);
@@ -116,11 +118,12 @@ function Room({ code, name }: { code: string; name: string }) {
     if (!billAmount || !result) return;
     const amount = mode === "loser" ? billAmount : share!;
     const memo = mode === "loser" ? `${result} got spun — pays the bill` : `Bill split ${room.names.length} ways`;
+    const before = await countRequests(config, address!);
     const receipt = await tx.send(
       { address: PAYEER, abi: payeerAbi, functionName: "createRequest", args: [amount, weekFromNow(), mode === "split", memo] },
       { pending: "Creating payment link…", success: "Link ready to share" },
     );
-    setLink({ id: requestIdFrom(receipt), label: mode === "loser" ? `Send this to ${result}` : "Send this to the group" });
+    setLink({ id: await newRequestId(config, receipt, address!, before), label: mode === "loser" ? `Send this to ${result}` : "Send this to the group" });
     setResult(undefined);
     tx.reset();
   }

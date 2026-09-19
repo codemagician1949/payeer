@@ -94,6 +94,7 @@ console.log("Public pages");
       assert(/Connect to continue/.test(body), `${path} did not ask for a wallet`);
       assert(!/Add a name|What's it for\?/.test(body), `${path} showed its form to a signed-out visitor`);
       assert(/never holds your money/.test(body), `${path} is missing the reassurances`);
+      assert(/Connect to continue/.test(body), `${path} has no way to sign in`);
     }
   });
 

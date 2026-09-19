@@ -3,7 +3,7 @@
 import { CheckCircle2, Upload, Users } from "lucide-react";
 import { useState } from "react";
 import { isAddress, type Address } from "viem";
-import { useConnection } from "wagmi";
+import { useActiveAccount } from "@/hooks/use-account";
 import { ConnectButton } from "@/components/connect";
 import { Avatar, Button, Card, Field, Input, PageHeader } from "@/components/ui";
 import { useTx } from "@/hooks/use-tx";
@@ -35,7 +35,7 @@ function parseRows(text: string) {
 }
 
 export default function BatchPage() {
-  const { isConnected } = useConnection();
+  const { isConnected } = useActiveAccount();
   const { data: balance } = useUsdcBalance();
   const tx = useTx();
   const [text, setText] = useState("");
