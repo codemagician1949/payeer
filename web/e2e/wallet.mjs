@@ -7,7 +7,7 @@ import { createPublicClient, createWalletClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { arc } from "viem/chains";
 
-export async function installWallet(page, privateKey, { name = "Test Wallet" } = {}) {
+export async function installWallet(page, privateKey, { name = "MetaMask", rdns = "io.metamask" } = {}) {
   const account = privateKeyToAccount(privateKey);
   const wallet = createWalletClient({ account, chain: arc, transport: http() });
   const publicClient = createPublicClient({ chain: arc, transport: http() });
@@ -24,6 +24,14 @@ export async function installWallet(page, privateKey, { name = "Test Wallet" } =
       case "wallet_switchEthereumChain":
       case "wallet_addEthereumChain":
         return null;
+      // A real wallet answers these during reconnect; forwarding them to a public RPC fails.
+      case "wallet_getPermissions":
+      case "wallet_requestPermissions":
+        return [{ parentCapability: "eth_accounts" }];
+      case "wallet_getCapabilities":
+        return {};
+      case "wallet_revokePermissions":
+        return null;
       case "personal_sign": {
         const [message] = params; // hex message
         return wallet.signMessage({ message: { raw: message } });
@@ -38,12 +46,15 @@ export async function installWallet(page, privateKey, { name = "Test Wallet" } =
         });
       }
       default:
+        if (method.startsWith("wallet_")) {
+          throw Object.assign(new Error(`Unsupported method ${method}`), { code: 4200 });
+        }
         return publicClient.request({ method, params });
     }
   });
 
   await page.addInitScript(
-    ({ address, name }) => {
+    ({ address, name, rdns }) => {
       const listeners = {};
       const provider = {
         isMetaMask: true,
@@ -57,14 +68,14 @@ export async function installWallet(page, privateKey, { name = "Test Wallet" } =
       const info = {
         uuid: "11111111-2222-3333-4444-555555555555",
         name,
-        rdns: "dev.payeer.testwallet",
+        rdns,
         icon: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciLz4=",
       };
       const announce = () => window.dispatchEvent(new CustomEvent("eip6963:announceProvider", { detail: Object.freeze({ info, provider }) }));
       window.addEventListener("eip6963:requestProvider", announce);
       announce();
     },
-    { address: account.address, name },
+    { address: account.address, name, rdns },
   );
 
   return account;

@@ -35,6 +35,29 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
+/**
+ * Wallets don't always restore themselves on a fresh page load — AppKit's reconnect races with
+ * the wallet announcing itself. A person would just click Connect, so the tests do too.
+ */
+async function ensureConnected(page) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const header = await page.locator("header").innerText();
+    if (/0x[0-9a-fA-F]{4}…/.test(header)) return true;
+    await page.waitForTimeout(3000);
+    if (/0x[0-9a-fA-F]{4}…/.test(await page.locator("header").innerText())) return true;
+
+    const connect = page.locator("button").filter({ hasText: /^Connect$|Connect to continue|Get started/ }).first();
+    if (await connect.count()) {
+      await connect.click();
+      await page.waitForTimeout(2500);
+      const entry = page.locator("w3m-modal, appkit-modal").getByText(/MetaMask/i).first();
+      if (await entry.count()) await entry.click({ timeout: 20000 }).catch(() => {});
+      await page.waitForTimeout(4000);
+    }
+  }
+  return /0x[0-9a-fA-F]{4}…/.test(await page.locator("header").innerText());
+}
+
 const browser = await chromium.launch();
 
 async function newPage({ key } = {}) {
@@ -93,8 +116,8 @@ console.log("Public pages");
     for (const path of ["/request", "/spin"]) {
       await page.goto(base + path, { waitUntil: "load" });
       await page.waitForTimeout(2000);
+      await page.waitForSelector("text=Connect to continue", { timeout: 30000 });
       const body = await page.locator("body").innerText();
-      assert(/Connect to continue/.test(body), `${path} did not ask for a wallet`);
       assert(!/Add a name|What's it for\?/.test(body), `${path} showed its form to a signed-out visitor`);
       assert(/never holds your money/.test(body), `${path} is missing the reassurances`);
       assert(/Connect to continue/.test(body), `${path} has no way to sign in`);
@@ -167,21 +190,15 @@ console.log("\nConnected wallet");
   await check("connects the wallet and reaches the dashboard", async () => {
     await page.goto(base, { waitUntil: "load" });
     await page.waitForTimeout(4000);
-    let body = await page.locator("body").innerText();
-    if (!/Your balance/.test(body)) {
-      // Not reconnected from a previous session: pick the wallet out of Reown's modal.
-      await page.locator("button").filter({ hasText: /Get started|Connect/ }).first().click();
-      await page.waitForTimeout(2500);
-      await page.locator("w3m-modal, appkit-modal").getByText(/Test Wallet/i).first().click({ timeout: 20000 });
-      await page.waitForTimeout(5000);
-      body = await page.locator("body").innerText();
-    }
+    assert(await ensureConnected(page), "couldn't connect the wallet");
+    const body = await page.locator("body").innerText();
     assert(/Your balance/.test(body), "did not reach the signed-in dashboard");
     assert(/0x[0-9a-fA-F]{4}…/.test(body), "connected address not shown in the header");
   });
 
   await check("the spinner works once connected", async () => {
     await page.goto(`${base}/spin`, { waitUntil: "load" });
+    await ensureConnected(page);
     await page.waitForSelector('input[placeholder="Add a name"]', { timeout: 60000 });
     for (const person of ["Ada", "Grace", "Linus"]) {
       await page.fill('input[placeholder="Add a name"]', person);
