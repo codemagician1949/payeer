@@ -2,7 +2,7 @@
 
 import { motion } from "motion/react";
 import { Mail, ShieldCheck, Wallet, Zap } from "lucide-react";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useConnection } from "wagmi";
 import { useActiveAccount } from "@/hooks/use-account";
 import { ConnectButton } from "./connect";
@@ -16,7 +16,15 @@ import { Card, Skeleton } from "./ui";
 export function RequireWallet({ title, body, children }: { title: string; body: string; children: ReactNode }) {
   const { isConnected } = useActiveAccount();
   const { isConnecting, isReconnecting } = useConnection();
+  // Restoring a wallet takes a moment and its timing varies. Hold the gate back briefly so a
+  // returning person doesn't see "connect" flash up before their wallet reappears.
+  const [settling, setSettling] = useState(true);
   const circle = useCircle();
+
+  useEffect(() => {
+    const timer = setTimeout(() => setSettling(false), 2500);
+    return () => clearTimeout(timer);
+  }, []);
 
   const reassurances = [
     { icon: ShieldCheck, text: "Payeer never holds your money" },
@@ -29,7 +37,7 @@ export function RequireWallet({ title, body, children }: { title: string; body: 
   // wagmi restores the connection from a cookie, so `isConnected` is already true on the server.
   // Checking the reconnecting flags first would render a skeleton on the client while the server
   // rendered the form — a hydration mismatch that blanks the page until reconnect finishes.
-  if (!isConnected && (isConnecting || isReconnecting)) {
+  if (!isConnected && (isConnecting || isReconnecting || settling)) {
     return (
       <div className="mx-auto max-w-md space-y-3">
         <Skeleton className="h-10 w-48" />

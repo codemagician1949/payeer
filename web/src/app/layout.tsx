@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { headers } from "next/headers";
+import Script from "next/script";
 import { cookieToInitialState } from "wagmi";
 import { Providers } from "@/components/providers";
 import { Shell } from "@/components/shell";
@@ -35,7 +36,9 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" data-theme="dark" suppressHydrationWarning className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
       <body>
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <Script id="theme" strategy="beforeInteractive">
+          {themeScript}
+        </Script>
         <Providers initialState={initialState}>
           <Shell>{children}</Shell>
         </Providers>
