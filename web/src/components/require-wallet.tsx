@@ -26,7 +26,10 @@ export function RequireWallet({ title, body, children }: { title: string; body: 
       : { icon: Wallet, text: "Hundreds of wallets, or scan a QR from your phone" },
   ];
 
-  if (isConnecting || isReconnecting) {
+  // wagmi restores the connection from a cookie, so `isConnected` is already true on the server.
+  // Checking the reconnecting flags first would render a skeleton on the client while the server
+  // rendered the form — a hydration mismatch that blanks the page until reconnect finishes.
+  if (!isConnected && (isConnecting || isReconnecting)) {
     return (
       <div className="mx-auto max-w-md space-y-3">
         <Skeleton className="h-10 w-48" />

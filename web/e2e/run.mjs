@@ -182,7 +182,7 @@ console.log("\nConnected wallet");
 
   await check("the spinner works once connected", async () => {
     await page.goto(`${base}/spin`, { waitUntil: "load" });
-    await page.waitForTimeout(2500);
+    await page.waitForSelector('input[placeholder="Add a name"]', { timeout: 60000 });
     for (const person of ["Ada", "Grace", "Linus"]) {
       await page.fill('input[placeholder="Add a name"]', person);
       await page.keyboard.press("Enter");
