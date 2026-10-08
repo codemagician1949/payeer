@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { ChatPanel } from "@/components/chat-panel";
 import { ConnectButton } from "@/components/connect";
 import { formatCountdown, StageBadge } from "@/components/pact-bits";
+import { NotifyWhenSettled } from "@/components/settle-alert";
 import { Sheet } from "@/components/sheet";
 import { ShareLink } from "@/components/share-link";
 import { Avatar, Badge, Button, Card, Skeleton } from "@/components/ui";
@@ -297,6 +298,7 @@ export default function PactPage() {
             </motion.div>
           )}
           {me?.claimed && <p className="text-center text-sm text-success">You&apos;ve claimed your share.</p>}
+          {joined && ["deciding", "proposed", "disputed"].includes(stage) && <NotifyWhenSettled />}
         </div>
       </Card>
 

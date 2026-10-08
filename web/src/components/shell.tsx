@@ -6,6 +6,8 @@ import { motion } from "motion/react";
 import { Activity, Handshake, Home, Moon, Plus, Send, Sun, Disc3 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { ConnectButton } from "./connect";
+import { SettleBanner } from "./settle-alert";
+import { useSettlements } from "@/hooks/use-settlements";
 import { cn } from "@/lib/format";
 import { isLocal, chain } from "@/lib/config";
 
@@ -27,6 +29,8 @@ export function Shell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   // Public payment pages stay focused: no app navigation.
   const minimal = pathname.startsWith("/pay/");
+  const { waiting } = useSettlements();
+  const toClaim = minimal ? 0 : waiting.length;
 
   return (
     <div className="aurora flex min-h-dvh flex-col">
@@ -54,6 +58,11 @@ export function Shell({ children }: { children: ReactNode }) {
                     <motion.span layoutId="nav-pill" className="absolute inset-0 -z-10 rounded-full bg-surface-2" />
                   )}
                   {item.label}
+                  {item.href === "/pacts" && toClaim > 0 && (
+                    <span className="ml-1.5 inline-flex size-4 items-center justify-center rounded-full bg-success text-[10px] font-bold text-bg">
+                      {toClaim}
+                    </span>
+                  )}
                 </Link>
               ))}
             </nav>
@@ -65,6 +74,8 @@ export function Shell({ children }: { children: ReactNode }) {
         </div>
       </header>
 
+      {!minimal && <SettleBanner />}
+
       <main className={cn("mx-auto w-full max-w-5xl flex-1 px-4 pt-6 sm:pt-10", minimal ? "pb-10" : "pb-28 md:pb-12")}>{children}</main>
 
       {!minimal && (
@@ -75,7 +86,14 @@ export function Shell({ children }: { children: ReactNode }) {
               return (
                 <li key={item.href}>
                   <Link href={item.href} className={cn("flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium", active ? "text-accent" : "text-muted")}>
-                    <item.icon className="size-5" strokeWidth={active ? 2.4 : 1.8} />
+                    <span className="relative">
+                      <item.icon className="size-5" strokeWidth={active ? 2.4 : 1.8} />
+                      {item.href === "/pacts" && toClaim > 0 && (
+                        <span className="absolute -right-1.5 -top-1 flex size-4 items-center justify-center rounded-full bg-success text-[10px] font-bold text-bg">
+                          {toClaim}
+                        </span>
+                      )}
+                    </span>
                     {item.label}
                   </Link>
                 </li>

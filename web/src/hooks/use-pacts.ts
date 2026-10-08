@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import type { Address } from "viem";
 import { useReadContract, useReadContracts } from "wagmi";
 import { pactsAbi } from "@/lib/abi";
@@ -86,6 +87,8 @@ function toView(id: bigint, raw: RawPact, terms: string, options: readonly strin
   };
 }
 
+export type MyPact = PactView & { claimable: bigint };
+
 export function useMyPacts(address: Address | undefined) {
   const ids = useReadContract({
     address: PACTS,
@@ -94,7 +97,7 @@ export function useMyPacts(address: Address | undefined) {
     args: address ? [address] : undefined,
     query: { enabled: !!address, refetchInterval: 10_000 },
   });
-  const recent = [...(ids.data ?? [])].reverse().slice(0, 30);
+  const recent = useMemo(() => [...(ids.data ?? [])].reverse().slice(0, 30), [ids.data]);
 
   const details = useReadContracts({
     contracts: recent.flatMap((id) => [
@@ -107,18 +110,27 @@ export function useMyPacts(address: Address | undefined) {
     query: { enabled: !!address && recent.length > 0, refetchInterval: 10_000 },
   });
 
-  const list = details.data
-    ? recent.map((id, i) => {
-        const d = details.data;
-        return {
-          ...toView(id, d[i * 4] as RawPact, d[i * 4 + 1] as string, d[i * 4 + 2] as readonly string[], []),
-          claimable: d[i * 4 + 3] as bigint,
-        };
-      })
-    : undefined;
+  // Kept referentially stable (react-query shares structure across refetches) so watchers can
+  // diff this list instead of re-running on every render.
+  const list = useMemo(
+    () =>
+      details.data
+        ? recent.map((id, i) => {
+            const d = details.data;
+            return {
+              ...toView(id, d[i * 4] as RawPact, d[i * 4 + 1] as string, d[i * 4 + 2] as readonly string[], []),
+              claimable: d[i * 4 + 3] as bigint,
+            };
+          })
+        : undefined,
+    [details.data, recent],
+  );
 
   return {
-    data: ids.data && ids.data.length === 0 ? [] : list,
+    data: ids.data && ids.data.length === 0 ? NONE : list,
     isLoading: ids.isLoading || (recent.length > 0 && details.isLoading),
   };
 }
+
+/** One shared empty list, so "no pacts" doesn't look like a change on every render. */
+const NONE: MyPact[] = [];

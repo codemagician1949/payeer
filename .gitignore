@@ -23,3 +23,5 @@ contracts/broadcast/**/dry-run
 .idea
 .vscode
 *.swp
+# Local anvil fixture runs: receipts from a throwaway chain
+contracts/broadcast/LocalFixture.s.sol/
