@@ -11,8 +11,9 @@ const projectId = process.env.NEXT_PUBLIC_REOWN_PROJECT_ID ?? "";
 
 /** Arc first (that's where Payeer lives), then the chains people can bring USDC from. */
 const arcNetwork: AppKitNetwork = chain.id === arcTestnet.id ? arcTestnet : arc;
+// Locally that has to be the anvil chain itself, or wagmi reads go to Arc and find nothing there.
 export const networks: [AppKitNetwork, ...AppKitNetwork[]] = isLocal
-  ? [arcNetwork]
+  ? [chain as AppKitNetwork]
   : [arcNetwork, base, arbitrum, optimism, mainnet];
 
 export const wagmiAdapter = new WagmiAdapter({
