@@ -12,7 +12,7 @@ A request is an invoice, not an escrow: nothing is held anywhere, and USDC moves
 payer's wallet to the creator's when it's paid. Cancelling or expiring a link costs nobody anything,
 and the app says so on screen rather than leaving a dead end. Escrow is what **Pacts** are for.
 
-**Bill spinner** — Add everyone at the table, spin the wheel, and the person it lands on pays. The result turns straight into a payment link for them, or an even split for the group. The wheel uses the browser's cryptographic random number generator, with rejection sampling so no slice is favoured.
+**Bill spinner** — Add everyone at the table, spin the wheel, and the person it lands on pays. The result turns straight into a payment link for them, or an even split for the group. The wheel's result comes from a public randomness beacon that nobody involved can influence — including whoever runs Payeer; there's more on that below.
 
 **Pacts** — Group escrow. Everyone stakes the same amount on one of up to eight outcomes; backers of the winning outcome split the pot. Two ways to settle:
 
@@ -20,6 +20,8 @@ and the app says so on screen rather than leaving a dead end. Escrow is what **P
 - *AI checks the result* — for public events. Claude searches the web for the result and posts it on-chain with its source. Anyone in the pact then has a challenge window (24 hours by default) to object, which drops the pact back to needing everyone's agreement.
 
 Funds can never get stuck: if nothing is settled by the deadline, everyone can reclaim their stake, and an outcome nobody backed refunds the pot.
+
+**You're told when a pact pays out.** A pact can finish with nobody watching — the AI posts a result, the objection window runs out, and anyone at all can release the payout — so the winner would otherwise have to keep checking. Payeer shows what's waiting as a banner and a count on the Pacts tab, and on a pact that hasn't finished yet it offers to notify you properly, so the result reaches you while the tab is in the background.
 
 **Batch payouts** — Pay up to 50 people in one transaction. Paste addresses and amounts straight from a spreadsheet.
 
@@ -29,7 +31,7 @@ Everything Circle provides is called through Circle: wallets and email sign-in v
 `@circle-fin/w3s-pw-web-sdk`, cross-chain USDC via CCTP and Circle's attestation service. No
 third-party stands in for a Circle service.
 
-**Spinner rooms** — Start a room, everyone scans the QR code and joins by name (no wallet needed). One wheel, synchronised: the server picks the winner so every phone lands on the same person, with a shared chat and a shared bill total. When the wheel lands on you, you can **pay the person who fronted the bill in one tap**, because anyone signed in shares where to pay them; otherwise the result becomes a payment link.
+**Spinner rooms** — Start a room, everyone scans the QR code and joins by name (no wallet needed). One wheel, synchronised: every phone lands on the same person, with a shared chat and a shared bill total. When the wheel lands on you, you can **pay the person who fronted the bill in one tap**, because anyone signed in shares where to pay them; otherwise the result becomes a payment link.
 
 **Nobody can rig the wheel — including whoever runs Payeer.** The result comes from
 [drand](https://drand.love)'s `quicknet` beacon, a public randomness service where a threshold of
@@ -54,6 +56,8 @@ uniform (chi-square over 120,000 draws).
 
 **Activity** — Every payment, with links to the Arc explorer.
 
+**Installable** — Add it to a phone's home screen and it opens like an app, without browser chrome, straight into Request or Spin from the icon's shortcuts.
+
 ## How it's built
 
 ```
@@ -67,6 +71,7 @@ web/         Next.js 16, Tailwind v4, shadcn/ui, wagmi v3 + viem, Motion.
              e2e/              browser tests, including a two-browser room test
              lib/cctp.ts       cross-chain USDC transfers into Arc
              api/circle/*      Circle wallets: email sign-in and PIN-approved transactions
+             scripts/local.sh  a local chain with pacts already staged, for the settle tests
 ```
 
 Some design notes:
@@ -76,6 +81,7 @@ Some design notes:
 - **The AI can propose, never pay.** The resolver key can only call `proposeOutcome`. Participants can dispute, and a disputed result falls back to unanimous agreement. A wrong or manipulated answer cannot move anyone's money on its own.
 - **Upgradeable by design.** Both contracts sit behind UUPS proxies with storage gaps, so features can be added later without asking anyone to move to a new address.
 - **Payment links have real link previews.** Sharing one into a chat app shows the amount and note, read live from the chain.
+- **Settlement alerts come from the chain, not a server.** The watcher reads the same pact list the Pacts page already reads, so it costs no extra calls, and it treats whatever is waiting when the page opens as the starting point rather than announcing week-old results. With no backend there's nothing to send a push to a closed tab: what it can do, and does, is reach a tab left open in the background.
 - **Arc's USDC is the gas token.** Balance and gas come from the same pot, and transfers route through native precompiles (including a blocklist check). The fork tests stub those precompiles, which is the only way to exercise the real token off-chain.
 - **Dev servers must be reached on the same host they were started on.** Next blocks cross-origin dev resources, so opening `127.0.0.1` when the server expects `localhost` silently breaks hydration — the page renders but nothing responds. `allowedDevOrigins` in `next.config.ts` covers both.
 - **Chat needs a long-running process.** `server/chat.mjs` holds WebSocket connections, so it runs as its own service rather than on a serverless platform. The web app works fine without it; chat just doesn't appear.
@@ -105,6 +111,19 @@ node e2e/room.mjs http://127.0.0.1:3000          # two browsers in one spinner r
 
 The tests drive a real browser and inject a test wallet that signs with viem, so wallet flows are
 exercised rather than mocked.
+
+A settled pact can't be staged on Arc — settling one costs real money, and Arc's USDC can't run
+off-chain — so that path runs against a local chain instead. `scripts/local.sh` starts anvil,
+deploys a mock USDC and both contracts, and leaves two pacts behind: one already settled with
+winnings waiting, one still being decided.
+
+```bash
+./scripts/local.sh        # prints the dev command and the pact addresses it just deployed
+PACTS_ADDRESS=0x... node e2e/settle-check.mjs http://127.0.0.1:3050
+```
+
+That suite settles the second pact out from under a running browser and checks a notification
+arrives for it, which is the part that can't be seen by reading the code.
 
 Deploying:
 
