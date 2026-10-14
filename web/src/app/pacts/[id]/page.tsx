@@ -134,7 +134,14 @@ export default function PactPage() {
           <Stat label="People" value={`${pact.participantCount}/${pact.maxParticipants}`} />
         </div>
         <div className="mt-4 flex flex-wrap justify-between gap-2 text-xs text-muted">
-          {stage === "joining" && <span>Joining closes in {formatCountdown(pact.joinDeadline, now)}</span>}
+          {stage === "joining" && (
+            <span>
+              Joining closes in {formatCountdown(pact.joinDeadline, now)}
+              {/* Said while it still matters: nobody should have to wonder whether a pact that
+                  never fills has taken their stake with it. */}
+              {pact.participantCount < 2 && " — if nobody joins, you take your stake back after that"}
+            </span>
+          )}
           {["deciding", "disputed"].includes(stage) && <span>Refunds open in {formatCountdown(pact.resolveBy, now)} if unresolved</span>}
           {stage === "proposed" && <span>Objection window closes in {formatCountdown(pact.proposedAt + pact.challengeWindow, now)}</span>}
           <button onClick={() => setShareOpen(true)} className="ml-auto inline-flex items-center gap-1 font-medium text-accent">
