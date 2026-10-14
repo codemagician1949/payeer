@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
-import { Divide, Link2, MessageCircle, Plus, QrCode, RotateCcw, Send, Users, X } from "lucide-react";
+import { Divide, Link2, MessageCircle, Pencil, Plus, QrCode, RotateCcw, Send, Users, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useConfig } from "wagmi";
@@ -78,10 +78,10 @@ export default function SpinRoomPage() {
     );
   }
 
-  return <Room code={code} name={name} />;
+  return <Room code={code} name={name} onRename={setName} />;
 }
 
-function Room({ code, name }: { code: string; name: string }) {
+function Room({ code, name, onRename }: { code: string; name: string; onRename: (next: string) => void }) {
   const room = useSpinRoom(code, name);
   const router = useRouter();
   const config = useConfig();
@@ -93,6 +93,8 @@ function Room({ code, name }: { code: string; name: string }) {
   const [draw, setDraw] = useState<Draw>();
   const [draft, setDraft] = useState("");
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [renaming, setRenaming] = useState("");
   const [link, setLink] = useState<{ id: bigint; label: string }>();
   const bottom = useRef<HTMLDivElement>(null);
   const lastSpinAt = useRef(0);
@@ -224,7 +226,22 @@ function Room({ code, name }: { code: string; name: string }) {
                 <li key={n} className={cn("flex items-center gap-1.5 rounded-full border py-1 pl-1 pr-3 text-sm", room.people.includes(n) ? "border-accent/40 bg-accent/10" : "border-border bg-surface-2/60")}>
                   <Avatar seed={n} label={n} size={24} />
                   {n}
-                  {n === name && <span className="text-xs text-muted">(you)</span>}
+                  {n === name && (
+                    <>
+                      <span className="text-xs text-muted">(you)</span>
+                      <button
+                        onClick={() => {
+                          setRenaming(name);
+                          setRenameOpen(true);
+                        }}
+                        className="-mr-1 rounded-full p-1 text-muted transition hover:bg-surface-2 hover:text-fg"
+                        aria-label="Change your name"
+                        title="Change your name"
+                      >
+                        <Pencil className="size-3.5" />
+                      </button>
+                    </>
+                  )}
                 </li>
               ))}
             </ul>
@@ -330,6 +347,32 @@ function Room({ code, name }: { code: string; name: string }) {
             </div>
           </div>
         )}
+      </Sheet>
+
+      <Sheet open={renameOpen} onClose={() => setRenameOpen(false)} title="Change your name">
+        <form
+          className="space-y-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const clean = renaming.trim().slice(0, 24);
+            if (!clean || clean === name) return setRenameOpen(false);
+            if (room.names.includes(clean)) return toast.error("Someone in the room already uses that name.");
+            // Rename on the wheel through the open socket, before reconnecting under the new
+            // name — otherwise the old one stays behind as a slice nobody is sitting in.
+            room.sendRoom({ names: room.names.map((n) => (n === name ? clean : n)) });
+            try {
+              localStorage.setItem(NAME_KEY, clean);
+            } catch {}
+            onRename(clean);
+            setRenameOpen(false);
+          }}
+        >
+          <Input value={renaming} onChange={(e) => setRenaming(e.target.value)} placeholder="Your name" autoFocus maxLength={24} />
+          <Button type="submit" size="lg" className="w-full">
+            Save
+          </Button>
+          <p className="text-center text-xs text-muted">Everyone in the room sees the change, and it&apos;s remembered next time.</p>
+        </form>
       </Sheet>
 
       <Sheet open={inviteOpen} onClose={() => setInviteOpen(false)} title={`Invite to room ${code}`}>
