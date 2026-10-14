@@ -14,7 +14,11 @@ and the app says so on screen rather than leaving a dead end. Escrow is what **P
 
 **Bill spinner** — Add everyone at the table, spin the wheel, and the person it lands on pays. The result turns straight into a payment link for them, or an even split for the group. The wheel's result comes from a public randomness beacon that nobody involved can influence — including whoever runs Payeer; there's more on that below.
 
-**Pacts** — Group escrow. Everyone stakes the same amount on one of up to eight outcomes; backers of the winning outcome split the pot. Two ways to settle:
+**Pacts** — A bet between friends, with the money actually held. Say two of you disagree about
+whether Arsenal beat Chelsea: you each stake the same amount on the outcome you believe in, the
+contract holds the USDC, and whoever backed the right one splits the pot. Up to eight outcomes and
+twenty people, so it also covers a fitness challenge, a group forecast, or a deposit nobody quite
+trusts the other to hold. Two ways to settle:
 
 - *Everyone agrees* — it pays out the moment every participant confirms the same outcome.
 - *AI checks the result* — for public events. Claude searches the web for the result and posts it on-chain with its source. Anyone in the pact then has a challenge window (24 hours by default) to object, which drops the pact back to needing everyone's agreement.
@@ -62,8 +66,8 @@ uniform (chi-square over 120,000 draws).
 
 ```
 contracts/   Foundry. Payeer.sol (requests, sends, batch payouts, activity feed)
-             and Pacts.sol (group escrow). 48 tests including a fuzz test
-             proving payouts always sum exactly to the pot, plus fork tests
+             and Pacts.sol (group escrow). 49 tests including a fuzz test
+             proving payouts always sum exactly to the pot, plus 5 fork tests
              that run every flow against Arc mainnet's real USDC.
 web/         Next.js 16, Tailwind v4, shadcn/ui, wagmi v3 + viem, Motion.
              app/api/resolve   the AI result checker (Claude, or Groq)
@@ -107,6 +111,7 @@ Browser tests (needs both running):
 node e2e/run.mjs http://127.0.0.1:3000           # every page, wallet connection, mobile layout
 node e2e/run.mjs http://127.0.0.1:3000 --spend   # also creates and pays a real request
 node e2e/room.mjs http://127.0.0.1:3000          # two browsers in one spinner room
+node e2e/fairness-check.mjs                      # the wheel is uniform (chi-square, 120k draws)
 ```
 
 The tests drive a real browser and inject a test wallet that signs with viem, so wallet flows are
@@ -124,6 +129,23 @@ PACTS_ADDRESS=0x... node e2e/settle-check.mjs http://127.0.0.1:3050
 
 That suite settles the second pact out from under a running browser and checks a notification
 arrives for it, which is the part that can't be seen by reading the code.
+
+### What has actually run on mainnet
+
+Tests prove the code does what it says. These are the same flows run against the deployed
+contracts with real USDC, because a hackathon judge should be able to check the chain rather than
+take a test suite's word for it:
+
+- A payment request **created and paid between two wallets**, through the browser rather than a
+  script — the amount and memo on the pay page are read live from the contract.
+- A pact **staked, settled and claimed**: 0.05 USDC each from two wallets, 0.10 held in escrow by
+  the contract, both participants confirming the same outcome, and the winner claiming the pot.
+  The contract's balance went back to **exactly zero**, which is the property the fuzz test
+  asserts — no dust left stranded.
+- `batchPay` paying two recipients in one transaction, and the on-chain activity feed recording
+  both the batch and the incoming request payment with the right counterparties.
+
+The whole exercise cost about **0.9 USDC** in stakes and gas.
 
 Deploying:
 
