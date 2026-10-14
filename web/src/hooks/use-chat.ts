@@ -92,7 +92,12 @@ export function useChat(room: string | undefined, address: Address | undefined, 
   }, [enabled, disconnect]);
 
   const send = useCallback((text: string) => {
-    socket.current?.send(JSON.stringify({ type: "msg", text }));
+    // Sending to a socket that is still shaking hands throws, and the uncaught error takes the
+    // page with it — the same guard `notifyTyping` below has always had.
+    const ws = socket.current;
+    if (ws?.readyState !== WebSocket.OPEN) return false;
+    ws.send(JSON.stringify({ type: "msg", text }));
+    return true;
   }, []);
 
   const notifyTyping = useCallback(() => {

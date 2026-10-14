@@ -83,19 +83,31 @@ export function useSpinRoom(code: string | undefined, name: string | undefined) 
     };
   }, [code, name]);
 
-  const sendRoom = useCallback((update: { names?: string[]; bill?: string; address?: string }) => {
-    socket.current?.send(JSON.stringify({ type: "room", ...update }));
+  /**
+   * A socket that is still shaking hands throws on send, which is an uncaught error that takes
+   * the page down with it. Anything that reconnects — changing your name, for one — leaves a
+   * window where the ref holds a socket that isn't open yet, so every send checks first and
+   * reports whether it went.
+   */
+  const send = useCallback((payload: Record<string, unknown>) => {
+    const ws = socket.current;
+    if (ws?.readyState !== WebSocket.OPEN) return false;
+    ws.send(JSON.stringify(payload));
+    return true;
   }, []);
+
+  const sendRoom = useCallback(
+    (update: { names?: string[]; bill?: string; address?: string }) => send({ type: "room", ...update }),
+    [send],
+  );
 
   /** The round is chosen from the public beacon's clock, and every client checks it's still ahead. */
   const requestSpin = useCallback(async () => {
     const round = await pickFutureRound();
-    socket.current?.send(JSON.stringify({ type: "spin", round }));
-  }, []);
+    return send({ type: "spin", round });
+  }, [send]);
 
-  const sendMessage = useCallback((text: string) => {
-    socket.current?.send(JSON.stringify({ type: "msg", text }));
-  }, []);
+  const sendMessage = useCallback((text: string) => send({ type: "msg", text }), [send]);
 
   return { status, error, messages, names, bill, host, addresses, people, spin, assistantTyping, sendRoom, requestSpin, sendMessage, available: !!CHAT_URL };
 }
@@ -121,12 +133,18 @@ export function seedRoom(code: string, names: string[]) {
   } catch {}
 }
 
-export function takeRoomSeed(code: string): string[] {
+/** Reads without consuming, so a seed isn't lost if the socket wasn't ready to carry it. */
+export function readRoomSeed(code: string): string[] {
   try {
     const raw = sessionStorage.getItem(`${SEED_KEY}:${code}`);
-    sessionStorage.removeItem(`${SEED_KEY}:${code}`);
     return raw ? (JSON.parse(raw) as string[]) : [];
   } catch {
     return [];
   }
+}
+
+export function clearRoomSeed(code: string) {
+  try {
+    sessionStorage.removeItem(`${SEED_KEY}:${code}`);
+  } catch {}
 }

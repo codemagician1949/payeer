@@ -15,7 +15,7 @@ import { ShareLink } from "@/components/share-link";
 import { ScrollArea } from "@/components/shadcn/scroll-area";
 import { AmountInput, Avatar, Button, Card, Input, Skeleton } from "@/components/ui";
 import { Wheel, type WheelHandle } from "@/components/wheel";
-import { newRoomCode, seedRoom, takeRoomSeed, useSpinRoom } from "@/hooks/use-spin-room";
+import { clearRoomSeed, newRoomCode, readRoomSeed, seedRoom, useSpinRoom } from "@/hooks/use-spin-room";
 import { useTx } from "@/hooks/use-tx";
 import { payeerAbi } from "@/lib/abi";
 import { PAYEER } from "@/lib/config";
@@ -129,8 +129,19 @@ function Room({ code, name, onRename }: { code: string; name: string; onRename: 
   }, [room.messages.length]);
 
   // Share where to pay me, so whoever the wheel picks can send it in one tap.
+  //
+  // Announced once per name and address rather than whenever the room object changes identity,
+  // which is every render. Comparing against the room's own copy looks equivalent but isn't:
+  // right after a rename the room still files the address under the old name, so the comparison
+  // stays unequal, and sending re-renders, which sends again — a loop that floods the socket and
+  // takes the tab down with it.
+  const announced = useRef<string>(undefined);
   useEffect(() => {
-    if (room.status === "ready" && address && room.addresses[name] !== address) room.sendRoom({ address });
+    if (room.status !== "ready" || !address) return;
+    const claim = `${name}:${address}`;
+    if (announced.current === claim) return;
+    // Only remembered once it actually went, so a send during a reconnect is retried.
+    if (room.sendRoom({ address })) announced.current = claim;
   }, [room.status, address, name, room]);
 
   // Whoever opened this room brought the names already on their wheel. Only the opener holds the
@@ -138,11 +149,16 @@ function Room({ code, name, onRename }: { code: string; name: string; onRename: 
   const seeded = useRef(false);
   useEffect(() => {
     if (room.status !== "ready" || seeded.current) return;
-    seeded.current = true;
-    const carried = takeRoomSeed(code);
-    if (carried.length) {
-      const merged = [...carried, ...room.names.filter((n) => !carried.includes(n))];
-      room.sendRoom({ names: merged });
+    const carried = readRoomSeed(code);
+    if (!carried.length) {
+      seeded.current = true;
+      return;
+    }
+    const merged = [...carried, ...room.names.filter((n) => !carried.includes(n))];
+    // The seed is only consumed once the room has it, so a reconnect doesn't lose the wheel.
+    if (room.sendRoom({ names: merged })) {
+      seeded.current = true;
+      clearRoomSeed(code);
     }
   }, [room.status, code, room]);
 
