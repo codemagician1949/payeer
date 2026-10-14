@@ -25,3 +25,5 @@ contracts/broadcast/**/dry-run
 *.swp
 # Local anvil fixture runs: receipts from a throwaway chain
 contracts/broadcast/LocalFixture.s.sol/
+.vercel
+.env*.local

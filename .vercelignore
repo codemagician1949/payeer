@@ -1,0 +1,11 @@
+# Vercel builds web/ (set as the project's Root Directory). Everything else is noise on the
+# wire: node_modules and build output are reinstalled and rebuilt there anyway.
+node_modules
+.next
+.git
+contracts/out
+contracts/cache
+contracts/lib
+contracts/broadcast
+.legacy
+e2e
