@@ -222,8 +222,8 @@ Variables for the **app** service:
 
 ```
 NEXT_PUBLIC_NETWORK=arc
-NEXT_PUBLIC_PAYEER_ADDRESS=0x7659C2E485D3E29dBC36f7E11de9E633ED1FDa06
-NEXT_PUBLIC_PACTS_ADDRESS=0x1D485d692E5D21e614Cd5197Cd0f05f5b72A23D2
+NEXT_PUBLIC_PAYEER_ADDRESS=0xa2D77721d840f5205Cede13523135605c5244FFA
+NEXT_PUBLIC_PACTS_ADDRESS=0x263d7d3eEEC65F24D815c119881624Fed6C9d032
 NEXT_PUBLIC_REOWN_PROJECT_ID=...
 NEXT_PUBLIC_CHAT_URL=wss://<chat service domain>
 RESOLVER_PRIVATE_KEY=...        # optional, for AI-checked pacts
@@ -236,7 +236,7 @@ And for the **chat** service:
 
 ```
 NEXT_PUBLIC_NETWORK=arc
-NEXT_PUBLIC_PACTS_ADDRESS=0x1D485d692E5D21e614Cd5197Cd0f05f5b72A23D2
+NEXT_PUBLIC_PACTS_ADDRESS=0x263d7d3eEEC65F24D815c119881624Fed6C9d032
 GROQ_API_KEY=...
 ALLOWED_ORIGINS=https://<app service domain>
 ```
@@ -258,8 +258,8 @@ replaced by the owner without moving funds or losing history.
 
 | | Address (proxy) | Implementation |
 |---|---|---|
-| Payeer | [`0x7659C2E485D3E29dBC36f7E11de9E633ED1FDa06`](https://explorer.arc.io/address/0x7659C2E485D3E29dBC36f7E11de9E633ED1FDa06) | `0xEa3245683904A3CF3ad5A5ada56Af007dBc9eaB6` |
-| Pacts | [`0x1D485d692E5D21e614Cd5197Cd0f05f5b72A23D2`](https://explorer.arc.io/address/0x1D485d692E5D21e614Cd5197Cd0f05f5b72A23D2) | `0xd74f3b3f4f2FF04E3eFE2B494A4BE93Eb55E7A94` |
+| Payeer | [`0xa2D77721d840f5205Cede13523135605c5244FFA`](https://explorer.arc.io/address/0xa2D77721d840f5205Cede13523135605c5244FFA) | `0x97F5F01F1DC69cf96fd86Ef667cD0A6B80C7CD0F` |
+| Pacts | [`0x263d7d3eEEC65F24D815c119881624Fed6C9d032`](https://explorer.arc.io/address/0x263d7d3eEEC65F24D815c119881624Fed6C9d032) | `0x13118d23439A823718Df202B37A0b1DeD931a108` |
 
 On Arc testnet (chain 5042002), for trying email sign-in:
 
@@ -272,9 +272,17 @@ Upgrading is deliberate and owner-only: `upgradeToAndCall` on the proxy, from th
 upgrade tests cover that a stranger can't do it, that live pacts keep their escrowed stakes
 across an upgrade, and that transferring ownership moves the upgrade rights with it.
 
-**The owner can replace the logic of a contract holding other people's escrowed USDC.** That
-power should live with a wallet you trust — ideally a hardware wallet or a multisig — not with
-a hot key.
+**The owner can replace the logic of a contract holding other people's escrowed USDC.** Today
+that is a single wallet, which is the weakest part of this deployment: a multisig would mean no
+one key could do it alone, and that is where this should end up before Payeer holds anything
+meaningful.
+
+**A blocklisted participant cannot be paid.** On Arc, Circle can blocklist an address, and USDC
+transfers to it revert. `claim` pays only to the claimant, so someone blocklisted after staking
+can never collect — their share stays in the contract. The alternative is an owner-only rescue
+that redirects a share, which hands the owner power over other people's money; between the two,
+leaving the funds untouchable is the safer default, and it is a deliberate choice rather than an
+oversight.
 
 ## Licence
 

@@ -144,11 +144,13 @@ console.log("Public pages");
   });
 
   await check("pay page shows a real on-chain request", async () => {
+    // Request 1 on the deployed Payeer, created at deploy time. Its memo is the thing being
+    // read from the chain, so this string has to match whatever seeded that request.
     await page.goto(`${base}/pay/1`, { waitUntil: "load" });
     await page.waitForTimeout(2500);
     const body = await page.locator("body").innerText();
-    assert(/Upgradeable smoke test/.test(body), "memo from chain not shown");
-    assert(/\$0\.02/.test(body), "amount from chain not shown");
+    assert(/Coffee on me/.test(body), "memo from chain not shown");
+    assert(/\$1\.00/.test(body), "amount from chain not shown");
   });
 
   await check("activity, pacts and batch pages render", async () => {
