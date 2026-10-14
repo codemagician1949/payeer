@@ -1,8 +1,8 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
-import { Divide, Link2, MessageCircle, QrCode, RotateCcw, Send, Users, X } from "lucide-react";
+import { Divide, Link2, MessageCircle, Plus, QrCode, RotateCcw, Send, Users, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useConfig } from "wagmi";
@@ -15,7 +15,7 @@ import { ShareLink } from "@/components/share-link";
 import { ScrollArea } from "@/components/shadcn/scroll-area";
 import { AmountInput, Avatar, Button, Card, Input, Skeleton } from "@/components/ui";
 import { Wheel, type WheelHandle } from "@/components/wheel";
-import { useSpinRoom } from "@/hooks/use-spin-room";
+import { newRoomCode, seedRoom, takeRoomSeed, useSpinRoom } from "@/hooks/use-spin-room";
 import { useTx } from "@/hooks/use-tx";
 import { payeerAbi } from "@/lib/abi";
 import { PAYEER } from "@/lib/config";
@@ -83,6 +83,7 @@ export default function SpinRoomPage() {
 
 function Room({ code, name }: { code: string; name: string }) {
   const room = useSpinRoom(code, name);
+  const router = useRouter();
   const config = useConfig();
   const { address, isConnected } = useActiveAccount();
   const wheel = useRef<WheelHandle>(null);
@@ -130,6 +131,19 @@ function Room({ code, name }: { code: string; name: string }) {
     if (room.status === "ready" && address && room.addresses[name] !== address) room.sendRoom({ address });
   }, [room.status, address, name, room]);
 
+  // Whoever opened this room brought the names already on their wheel. Only the opener holds the
+  // seed, and taking it clears it, so a second person joining never overwrites the room.
+  const seeded = useRef(false);
+  useEffect(() => {
+    if (room.status !== "ready" || seeded.current) return;
+    seeded.current = true;
+    const carried = takeRoomSeed(code);
+    if (carried.length) {
+      const merged = [...carried, ...room.names.filter((n) => !carried.includes(n))];
+      room.sendRoom({ names: merged });
+    }
+  }, [room.status, code, room]);
+
   const billAmount = parseUsdc(room.bill);
   // Whoever fronted the bill: the room's host, if they've shared an address.
   const payTo = room.host && room.host !== name && room.addresses[room.host]
@@ -171,9 +185,22 @@ function Room({ code, name }: { code: string; name: string }) {
               {room.status === "ready" ? `${room.people.length} here · ${room.names.length} on the wheel` : "Connecting…"}
             </p>
           </div>
-          <Button variant="secondary" onClick={() => setInviteOpen(true)}>
-            <QrCode className="size-4" /> Invite
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              title="Start a separate room, leaving this one running"
+              onClick={() => {
+                const next = newRoomCode();
+                seedRoom(next, room.names);
+                router.push(`/spin/${next}`);
+              }}
+            >
+              <Plus className="size-4" /> New room
+            </Button>
+            <Button variant="secondary" onClick={() => setInviteOpen(true)}>
+              <QrCode className="size-4" /> Invite
+            </Button>
+          </div>
         </div>
 
         <Wheel ref={wheel} names={room.names.length ? room.names : ["Waiting", "for", "people", "to join"]} />

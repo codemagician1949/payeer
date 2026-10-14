@@ -14,7 +14,7 @@ import { ShareLink } from "@/components/share-link";
 import { AmountInput, Avatar, Button, Card, Input, PageHeader } from "@/components/ui";
 import { Wheel, type WheelHandle } from "@/components/wheel";
 import { FairnessNote } from "@/components/fairness-note";
-import { newRoomCode } from "@/hooks/use-spin-room";
+import { newRoomCode, seedRoom } from "@/hooks/use-spin-room";
 import { drawWinner, pickFutureRound, type Draw } from "@/lib/fairness";
 import { useTx } from "@/hooks/use-tx";
 import { payeerAbi } from "@/lib/abi";
@@ -176,10 +176,22 @@ function Spinner() {
           <Button size="lg" onClick={spin} disabled={names.length < 2} loading={spinning} className="h-16 text-lg">
             {spinning ? "Waiting for the randomness beacon…" : names.length < 2 ? "Add at least 2 names" : "Spin the wheel"}
           </Button>
-          <Button variant="secondary" className="w-full" onClick={() => router.push(`/spin/${newRoomCode()}`)}>
+          <Button
+            variant="secondary"
+            className="w-full"
+            onClick={() => {
+              const code = newRoomCode();
+              // Carry whoever is already on the wheel, so the room doesn't start from nothing.
+              seedRoom(code, names);
+              router.push(`/spin/${code}`);
+            }}
+          >
             <QrCode className="size-4" /> Everyone on their own phone
           </Button>
-          <p className="text-center text-xs text-muted">Opens a room others can scan into. They see the same wheel and result.</p>
+          <p className="text-center text-xs text-muted">
+            Opens a new room others can scan into{names.length ? ", with everyone above already on the wheel" : ""}. They see the same
+            wheel and result.
+          </p>
         </div>
       </div>
 

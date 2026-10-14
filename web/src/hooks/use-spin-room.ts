@@ -107,3 +107,26 @@ export function newRoomCode() {
   crypto.getRandomValues(bytes);
   return [...bytes].map((b) => alphabet[b % alphabet.length]).join("");
 }
+
+/**
+ * Names typed on the Spin page, handed to the room that page is about to open. Without this a
+ * room always starts empty, so everyone who had already been added has to be typed in again.
+ * Scoped to the room code and cleared once used, so it seeds that room only, and only once.
+ */
+const SEED_KEY = "payeer:spin-seed";
+
+export function seedRoom(code: string, names: string[]) {
+  try {
+    if (names.length) sessionStorage.setItem(`${SEED_KEY}:${code}`, JSON.stringify(names));
+  } catch {}
+}
+
+export function takeRoomSeed(code: string): string[] {
+  try {
+    const raw = sessionStorage.getItem(`${SEED_KEY}:${code}`);
+    sessionStorage.removeItem(`${SEED_KEY}:${code}`);
+    return raw ? (JSON.parse(raw) as string[]) : [];
+  } catch {
+    return [];
+  }
+}
