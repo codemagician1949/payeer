@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 184 40" width="736" height="160" role="img" aria-label="Payeer">
+  <title>Payeer</title>
+  <defs>
+    <linearGradient id="payeer-logo" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8B7CFF"/>
+      <stop offset="1" stop-color="#5BB8FF"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(0 4)">
+    <rect width="32" height="32" rx="9" fill="url(#payeer-logo)"/>
+    <path d="M11 23V9h6.2a4.8 4.8 0 0 1 0 9.6H11" fill="none" stroke="#0F0F17" stroke-width="2.9" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="21.6" cy="22.4" r="1.9" fill="#0F0F17"/>
+  </g>
+  <!-- The wordmark is live text, so it uses whatever grotesk is available and stays selectable.
+       For print or a context without these fonts, use logo-mark.svg and set the word yourself. -->
+  <text x="44" y="28" font-family="Space Grotesk, DM Sans, Helvetica Neue, Arial, sans-serif"
+        font-size="27" font-weight="700" letter-spacing="-0.8" fill="#F4F4F8">Payeer</text>
+</svg>
